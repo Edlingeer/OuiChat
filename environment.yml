@@ -1,0 +1,17 @@
+name: french_teacher
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch>=2.1
+  - torchaudio
+  - pytorch-cuda=12.4
+  - numpy>=1.24
+  - pip:
+    - sounddevice>=0.4.6
+    - faster-whisper>=1.0
+    - ollama>=0.2
+    - piper-tts>=1.2
