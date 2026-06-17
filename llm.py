@@ -81,6 +81,8 @@ CORRECTIONS :
 - Si erreur grammaticale ou de vocabulaire importante, ajoute en fin de réponse :
     [CORREÇÃO: xxx | Ótimo esforço ! explication en português + forme correcte]
 - xxx = conjugaison | accord | article | vocabulaire | structure | préposition | autre
+- Corrige aussi quand une phrase ne fait pas sens en français, même si les mots existent
+  individuellement (ex : "j'ai parfait la mer" → "structure" car "avoir parfait" n'existe pas).
 - Commence par "Ótimo esforço !". Ignore les erreurs mineures d'accent.
 - Ne parle JAMAIS la correction — texte affiché uniquement.
 - Si aucune correction : n'inclus pas la balise [CORREÇÃO].
@@ -174,7 +176,9 @@ def chat(
     correcao: str | None = None
     m = _RE_CORRECAO.search(full_response)
     if m:
-        correcao = m.group(1).strip()
+        raw_correcao = m.group(1).strip()
+        if raw_correcao.lower() != "aucun":
+            correcao = raw_correcao
         full_response = full_response[: m.start()].rstrip() + full_response[m.end():]
 
     new_words: list[str] = []

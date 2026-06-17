@@ -216,6 +216,43 @@
     #side-content b  { color: #ccc; font-weight: 600; }
     #side-content em { color: #888; font-style: italic; }
 
+    /* ── Word hover popup ── */
+    .word {
+      border-radius: 3px;
+      cursor: default;
+      transition: background 0.1s;
+    }
+    .msg.bot .word:hover { background: rgba(255,255,255,0.09); }
+
+    #word-popup {
+      position: fixed;
+      background: #1c1c38;
+      border: 1px solid #3a3a70;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      z-index: 200;
+      pointer-events: auto;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      display: none;
+      min-width: 130px;
+    }
+    #word-popup.visible { display: block; }
+    #popup-word { font-weight: 600; color: #ccd; margin-bottom: 6px; font-size: 0.9rem; }
+    #popup-btn {
+      width: 100%;
+      background: #25254a;
+      border: 1px solid #4a4a9a;
+      border-radius: 6px;
+      color: #aab;
+      font-size: 0.78rem;
+      padding: 4px 0;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    #popup-btn:hover:not(:disabled) { background: #30306a; color: #ccf; }
+    #popup-btn:disabled { opacity: 0.6; cursor: default; }
+
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #252545; border-radius: 3px; }
@@ -247,6 +284,11 @@
   </div>
 </div>
 
+<div id="word-popup">
+  <div id="popup-word"></div>
+  <button id="popup-btn" onclick="addWordToVocab()">+ Vocabulaire</button>
+</div>
+
 <script>
   // ── State ────────────────────────────────────────────────────────────────
   const btn        = document.getElementById('talkBtn');
@@ -276,7 +318,13 @@
     label.textContent = role === 'vous' ? 'Vous' : 'Marc';
     div.appendChild(label);
     const body = document.createElement('div');
-    body.textContent = text;
+    if (role === 'bot') {
+      // Wrap each word (2+ letters) in a hoverable span for vocab lookup
+      body.innerHTML = text.replace(/([a-zA-ZÀ-ÿĀ-ſ]{2,})/g,
+        w => `<span class="word" data-word="${w}" data-context="${text.replace(/"/g,'&quot;')}">${w}</span>`);
+    } else {
+      body.textContent = text;
+    }
     div.appendChild(body);
     transcript.appendChild(div);
     transcript.scrollTop = transcript.scrollHeight;
@@ -448,6 +496,59 @@
     transcript.innerHTML = '';
     setStatus('Appuyer pour parler', '');
   }
+
+  // ── Word popup ───────────────────────────────────────────────────────────
+  const popup     = document.getElementById('word-popup');
+  const popupWord = document.getElementById('popup-word');
+  const popupBtn  = document.getElementById('popup-btn');
+  let activeWord  = '';
+  let activeCtx   = '';
+  let hideTimer   = null;
+
+  function showPopup(span) {
+    clearTimeout(hideTimer);
+    activeWord = span.dataset.word;
+    activeCtx  = span.dataset.context;
+    popupWord.textContent  = activeWord;
+    popupBtn.textContent   = '+ Vocabulaire';
+    popupBtn.disabled      = false;
+    const r = span.getBoundingClientRect();
+    popup.style.left = Math.min(r.left, window.innerWidth - 160) + 'px';
+    popup.style.top  = (r.bottom + 6) + 'px';
+    popup.classList.add('visible');
+  }
+
+  function hidePopup() {
+    hideTimer = setTimeout(() => popup.classList.remove('visible'), 250);
+  }
+
+  async function addWordToVocab() {
+    popupBtn.textContent = '⏳';
+    popupBtn.disabled    = true;
+    try {
+      await fetch('/define', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: activeWord, context: activeCtx }),
+      });
+      popupBtn.textContent = '✓ Ajouté';
+      if (currentPanel === 'vocabulary')
+        openPanel('vocabulary', document.getElementById('btnVocab'));
+    } catch {
+      popupBtn.textContent = 'Erreur';
+    }
+  }
+
+  // Event delegation — works for all current and future bot messages
+  transcript.addEventListener('mouseover',  e => { const s = e.target.closest('.msg.bot .word'); if (s) showPopup(s); });
+  transcript.addEventListener('mouseout',   e => { const s = e.target.closest('.msg.bot .word'); if (s) hidePopup(); });
+  popup.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  popup.addEventListener('mouseleave', hidePopup);
+
+  // Request mic permission on page load so the first click is instant
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(s => s.getTracks().forEach(t => t.stop()))
+    .catch(() => setStatus('Accès au micro refusé'));
 
   // ── Button events ────────────────────────────────────────────────────────
   btn.addEventListener('mousedown',  e => { e.preventDefault(); startRecording(); });

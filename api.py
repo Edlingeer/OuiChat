@@ -6,7 +6,9 @@ Then open:   http://localhost:8000
 import base64
 import os
 import tempfile
+from datetime import date
 
+import ollama
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,7 +18,7 @@ from llm import chat, build_system_prompt
 from memory import get_graph, summarize_for_prompt
 from stt import transcribe_file
 from tts import synthesize_to_bytes
-from vocab import get_known_words
+from vocab import get_known_words, add_words
 
 # ── Configuration (mirrors main.py) ──────────────────────────────────────────
 OLLAMA_MODEL       = "gemma4:12b"
@@ -86,6 +88,30 @@ def reset():
     from llm import _history
     _history.clear()
     return {"ok": True}
+
+
+@app.post("/define")
+async def define_word(body: dict):
+    """Look up a word via the LLM and add it to vocabulary."""
+    word    = body.get("word", "").strip()
+    context = body.get("context", "").strip()
+    if not word:
+        return JSONResponse({"error": "no_word"}, status_code=400)
+
+    prompt = (
+        f"Traduis le mot français « {word} » en portugais brésilien. "
+        f"Contexte : « {context} ». "
+        f"Réponds UNIQUEMENT avec ce format, sans rien d'autre : traduction|exemple_en_français"
+    )
+    resp = ollama.generate(model=OLLAMA_MODEL, prompt=prompt, think=False)
+    raw  = resp["response"].strip().splitlines()[0]  # take first line only
+    parts      = [p.strip() for p in raw.split("|", 1)]
+    traduction = parts[0] if parts else raw
+    exemple    = parts[1] if len(parts) > 1 else ""
+
+    add_words(VOCAB_FILE, [{"mot": word, "traduction": traduction,
+                            "exemple": exemple, "date": str(date.today())}])
+    return {"word": word, "traduction": traduction, "exemple": exemple}
 
 
 @app.get("/vocabulary")

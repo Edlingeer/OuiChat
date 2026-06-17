@@ -1,8 +1,9 @@
 # OuiChat — French A1 Conversation Bot
 
-An offline French language learning bot for complete beginners (CEFR A1). It listens to
-you speak French, transcribes it, replies in French, displays the reply, and speaks it
-aloud — all running locally on your GPU.
+An offline French language learning bot for Brazilian Portuguese speakers at complete
+beginner level (CEFR A1). It listens to you speak French, transcribes it, replies in
+French, displays the reply, and speaks it aloud — all running locally on your GPU.
+Grammar corrections and vocabulary translations are given in Brazilian Portuguese.
 
 Two ways to use it: a **terminal bot** (classic) or a **web interface** (browser-based).
 
