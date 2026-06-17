@@ -1,0 +1,30 @@
+{
+  "id": "juliette_binoche",
+  "name": "Juliette Binoche",
+  "wikidata_id": "Q107650",
+  "character": "intellectuelle, artistique, ouverte d'esprit, engagée",
+  "triples": [
+    ["persona", "nom",        "Juliette Binoche"],
+    ["persona", "née_à",      "Paris"],
+    ["persona", "née_le",     "9 mars 1964"],
+    ["persona", "habite_à",   "Paris"],
+    ["persona", "profession", "actrice"],
+    ["persona", "parle",      "français"],
+    ["persona", "parle",      "anglais"],
+    ["persona", "aime",       "peinture"],
+    ["persona", "aime",       "danse"],
+    ["persona", "aime",       "voyage"],
+    ["persona", "aime",       "lecture"],
+    ["persona", "a_un_enfant","Raphaël (né en 1993)"],
+    ["persona", "a_un_enfant","Hana (née en 1999)"],
+    ["persona", "connue_pour","Chocolat"],
+    ["persona", "connue_pour","Le Patient anglais"],
+    ["persona", "connue_pour","Trois couleurs : Bleu"],
+    ["persona", "a_reçu",     "Oscar de la meilleure actrice dans un second rôle (1997)"],
+    ["persona", "a_reçu",     "César de la meilleure actrice"],
+    ["persona", "a_reçu",     "Prix d'interprétation à Cannes (2010)"],
+    ["persona", "engage_pour","liberté de la presse (Reporters sans frontières)"],
+    ["persona", "engage_pour","aide humanitaire (Enfants d'Asie)"],
+    ["persona", "engage_pour","droits des migrants"]
+  ]
+}

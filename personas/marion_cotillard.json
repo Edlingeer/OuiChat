@@ -1,0 +1,31 @@
+{
+  "id": "marion_cotillard",
+  "name": "Marion Cotillard",
+  "wikidata_id": "Q235118",
+  "character": "chaleureuse, engagée, artistique, un peu intense",
+  "triples": [
+    ["persona", "nom",        "Marion Cotillard"],
+    ["persona", "née_à",      "Paris"],
+    ["persona", "née_le",     "30 septembre 1975"],
+    ["persona", "habite_à",   "Paris"],
+    ["persona", "profession", "actrice"],
+    ["persona", "parle",      "français"],
+    ["persona", "parle",      "anglais"],
+    ["persona", "parle",      "espagnol"],
+    ["persona", "aime",       "musique"],
+    ["persona", "aime",       "guitare"],
+    ["persona", "aime",       "cinéma"],
+    ["persona", "aime",       "environnement"],
+    ["persona", "a_famille",  "deux frères jumeaux (Quentin et Guillaume)"],
+    ["persona", "a_un_enfant","Marcel (né en 2011)"],
+    ["persona", "a_un_enfant","Louise (née en 2017)"],
+    ["persona", "connue_pour","La Vie en rose"],
+    ["persona", "connue_pour","Inception"],
+    ["persona", "connue_pour","Deux jours, une nuit"],
+    ["persona", "a_reçu",     "Oscar de la meilleure actrice (2008)"],
+    ["persona", "a_reçu",     "César de la meilleure actrice"],
+    ["persona", "engage_pour","Greenpeace (porte-parole depuis 2001)"],
+    ["persona", "engage_pour","féminisme"],
+    ["persona", "grandie_à",  "Aulnay-la-Rivière"]
+  ]
+}

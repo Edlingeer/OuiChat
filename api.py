@@ -14,8 +14,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from corrections import parse_correction, save_correction
-from llm import chat, build_system_prompt
+from llm import chat, build_system_prompt, list_levels
 from memory import get_graph, summarize_for_prompt
+from persona import list_personas, load_persona
 from stt import transcribe_file
 from tts import synthesize_to_bytes
 from vocab import get_known_words, add_words
@@ -30,6 +31,8 @@ CORRECTIONS_FILE   = "corrections.md"
 PROFILE_FILE       = "profile.json"
 NEW_WORDS_PER_TURN = 1
 ENABLE_THINKING    = False
+DEFAULT_PERSONA    = "marion_cotillard"
+DEFAULT_LEVEL      = "a1"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 PIPER_VOICE_PATH = os.path.join(_HERE, PIPER_VOICE_PATH)
@@ -39,6 +42,9 @@ PROFILE_FILE     = os.path.join(_HERE, PROFILE_FILE)
 # ─────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="OuiChat")
+
+_current_persona: dict = load_persona(DEFAULT_PERSONA)
+_current_level: str = DEFAULT_LEVEL
 
 
 @app.post("/turn")
@@ -64,6 +70,8 @@ async def turn(audio: UploadFile = File(...)):
         profile_file=PROFILE_FILE,
         new_words_per_turn=NEW_WORDS_PER_TURN,
         enable_thinking=ENABLE_THINKING,
+        persona_data=_current_persona,
+        level=_current_level,
     )
 
     correction_text = None
@@ -80,6 +88,44 @@ async def turn(audio: UploadFile = File(...)):
         "new_words":  new_words,
         "audio_b64":  base64.b64encode(wav_bytes).decode(),
     }
+
+
+@app.get("/personas")
+def get_personas():
+    """List available personas."""
+    return {"personas": list_personas()}
+
+
+@app.post("/set_persona")
+def set_persona(body: dict):
+    """Switch persona and reset conversation history."""
+    global _current_persona
+    persona_id = body.get("id", "").strip()
+    if not persona_id:
+        return JSONResponse({"error": "no_id"}, status_code=400)
+    _current_persona = load_persona(persona_id)
+    from llm import _history
+    _history.clear()
+    return {"ok": True, "name": _current_persona["name"]}
+
+
+@app.get("/levels")
+def get_levels():
+    """List available levels."""
+    return {"levels": list_levels()}
+
+
+@app.post("/set_level")
+def set_level(body: dict):
+    """Switch level and reset conversation history."""
+    global _current_level
+    level_id = body.get("id", "").strip()
+    if level_id not in ("a1", "a2", "b1"):
+        return JSONResponse({"error": "invalid_level"}, status_code=400)
+    _current_level = level_id
+    from llm import _history
+    _history.clear()
+    return {"ok": True}
 
 
 @app.post("/reset")

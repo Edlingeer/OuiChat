@@ -42,6 +42,20 @@
     header nav button:hover { border-color: #4a4a8a; color: #bbb; }
     header nav button.active { border-color: #5a5acc; color: #aab; background: #1a1a35; }
 
+    #personaSelect, #levelSelect {
+      background: #1a1a35;
+      border: 1px solid #252545;
+      border-radius: 6px;
+      color: #aab;
+      font-size: 0.78rem;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #personaSelect:hover, #personaSelect:focus,
+    #levelSelect:hover,   #levelSelect:focus   { border-color: #4a4a8a; }
+
     /* ── Main area ── */
     #main {
       flex: 1;
@@ -262,6 +276,12 @@
 
 <header>
   <h1>🇫🇷 OuiChat</h1>
+  <select id="personaSelect" onchange="setPersona(this.value)">
+    <option value="">Chargement…</option>
+  </select>
+  <select id="levelSelect" onchange="setLevel(this.value)">
+    <option value="">Chargement…</option>
+  </select>
   <nav>
     <button id="btnVocab" onclick="openPanel('vocabulary', this)">Vocabulaire</button>
     <button id="btnProfile" onclick="openPanel('profile', this)">Profil</button>
@@ -291,18 +311,82 @@
 
 <script>
   // ── State ────────────────────────────────────────────────────────────────
-  const btn        = document.getElementById('talkBtn');
-  const statusEl   = document.getElementById('status');
-  const transcript = document.getElementById('transcript');
-  const sidePanel  = document.getElementById('side-panel');
-  const sideTitle  = document.getElementById('side-title');
-  const sideContent= document.getElementById('side-content');
+  const btn          = document.getElementById('talkBtn');
+  const statusEl     = document.getElementById('status');
+  const transcript   = document.getElementById('transcript');
+  const sidePanel    = document.getElementById('side-panel');
+  const sideTitle    = document.getElementById('side-title');
+  const sideContent  = document.getElementById('side-content');
+  const personaSelect= document.getElementById('personaSelect');
+  const levelSelect  = document.getElementById('levelSelect');
 
-  let mediaRecorder  = null;
-  let audioChunks    = [];
-  let stream         = null;
-  let isProcessing   = false;
-  let currentPanel   = null;
+  let mediaRecorder    = null;
+  let audioChunks      = [];
+  let stream           = null;
+  let isProcessing     = false;
+  let currentPanel     = null;
+  let currentPersonaName = 'Marion Cotillard';
+
+  // ── Persona ──────────────────────────────────────────────────────────────
+  async function loadPersonas() {
+    try {
+      const res  = await fetch('/personas');
+      const data = await res.json();
+      personaSelect.innerHTML = '';
+      data.personas.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value       = p.id;
+        opt.textContent = p.name;
+        if (p.id === 'marion_cotillard') opt.selected = true;
+        personaSelect.appendChild(opt);
+      });
+    } catch {
+      personaSelect.innerHTML = '<option value="">Erreur</option>';
+    }
+  }
+
+  async function loadLevels() {
+    try {
+      const res  = await fetch('/levels');
+      const data = await res.json();
+      levelSelect.innerHTML = '';
+      data.levels.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value       = l.id;
+        opt.textContent = l.name;
+        if (l.id === 'a1') opt.selected = true;
+        levelSelect.appendChild(opt);
+      });
+    } catch {
+      levelSelect.innerHTML = '<option value="">Erreur</option>';
+    }
+  }
+
+  async function setLevel(id) {
+    if (!id) return;
+    await fetch('/set_level', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id }),
+    });
+    transcript.innerHTML = '';
+    setStatus('Appuyer pour parler', '');
+  }
+
+  async function setPersona(id) {
+    if (!id) return;
+    const res  = await fetch('/set_persona', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      currentPersonaName = data.name;
+      transcript.innerHTML = '';
+      setStatus('Appuyer pour parler', '');
+    }
+  }
 
   // ── UI helpers ───────────────────────────────────────────────────────────
   function setStatus(text, cls = '') {
@@ -315,7 +399,7 @@
     div.className = 'msg ' + role;
     const label = document.createElement('div');
     label.className = 'label';
-    label.textContent = role === 'vous' ? 'Vous' : 'Marc';
+    label.textContent = role === 'vous' ? 'Vous' : currentPersonaName;
     div.appendChild(label);
     const body = document.createElement('div');
     if (role === 'bot') {
@@ -460,7 +544,7 @@
         if (data.correction) addCorrection(data.correction);
         addNewWords(data.new_words);
 
-        setStatus('🔊 Marc parle…', 'speaking');
+        setStatus('🔊 ' + currentPersonaName + ' parle…', 'speaking');
         await playWav(data.audio_b64);
         setStatus('Appuyer pour parler', '');
 
@@ -545,7 +629,9 @@
   popup.addEventListener('mouseenter', () => clearTimeout(hideTimer));
   popup.addEventListener('mouseleave', hidePopup);
 
-  // Request mic permission on page load so the first click is instant
+  // Load dropdowns and request mic permission on page load
+  loadPersonas();
+  loadLevels();
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(s => s.getTracks().forEach(t => t.stop()))
     .catch(() => setStatus('Accès au micro refusé'));

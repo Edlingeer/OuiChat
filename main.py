@@ -13,6 +13,8 @@ CORRECTIONS_FILE   = "corrections.md"
 PROFILE_FILE       = "profile.json"
 NEW_WORDS_PER_TURN = 1
 ENABLE_THINKING    = False          # True → <|think|> chain-of-thought (slower)
+DEFAULT_PERSONA    = "marion_cotillard"  # id from personas/ folder
+DEFAULT_LEVEL      = "a1"               # a1 | a2 | b1
 AUDIO_DEVICE        = None  # mic input  — set to index from check_audio.py if needed
 AUDIO_OUTPUT_DEVICE = 2 # speaker out — set to index from check_audio.py if needed
 # ───────────────────────────────────────────────────────────────────────────────
@@ -33,6 +35,8 @@ from llm import chat
 from tts import speak
 from vocab import get_known_words
 from corrections import save_correction, parse_correction
+from persona import load_persona
+from llm import list_levels
 
 
 def _banner() -> None:
@@ -49,6 +53,10 @@ def _banner() -> None:
 
 def main() -> None:
     _banner()
+    persona = load_persona(DEFAULT_PERSONA)
+    levels  = {l["id"]: l["name"] for l in list_levels()}
+    print(f"  Persona : {persona['name']}")
+    print(f"  Niveau  : {levels.get(DEFAULT_LEVEL, DEFAULT_LEVEL)}\n")
 
     while True:
         # 1. Record
@@ -74,6 +82,8 @@ def main() -> None:
             profile_file=PROFILE_FILE,
             new_words_per_turn=NEW_WORDS_PER_TURN,
             enable_thinking=ENABLE_THINKING,
+            persona_data=persona,
+            level=DEFAULT_LEVEL,
         )
 
         print(f"Bot : {french_reply}")
