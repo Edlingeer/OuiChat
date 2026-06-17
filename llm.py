@@ -6,9 +6,11 @@ from datetime import date
 import ollama
 
 from vocab import add_words, get_known_words
-from memory import add_facts, get_known_facts
+from memory import add_triples, get_graph, summarize_for_prompt
 
 _history: list[dict] = []
+
+MAX_HISTORY_EXCHANGES = 8   # user+assistant pairs kept; older turns are dropped
 
 _RE_THINKING = re.compile(r"<think>.*?</think>|<\|think\|>.*?<\|/think\|>", re.DOTALL)
 _RE_NOUVEAUX = re.compile(r"\[NOUVEAU\w*:\s*(.*?)\]", re.DOTALL)
@@ -24,71 +26,69 @@ def build_system_prompt(
     enable_thinking: bool,
 ) -> str:
     known_words = get_known_words(vocab_file)
-    known_facts = get_known_facts(profile_file)
+    graph = get_graph(profile_file)
     think_token = "<|think|>\n" if enable_thinking else ""
     known_str = ", ".join(known_words) if known_words else "aucun pour l'instant"
-    facts_str = "\n".join(f"  - {f}" for f in known_facts) if known_facts else "  (rien encore)"
+    profile_str = summarize_for_prompt(graph)
 
     return f"""{think_token}Tu es un ami francophone qui aide un grand débutant à pratiquer le français (niveau A1).
 Tes réponses doivent respecter ces règles STRICTEMENT :
 
 STYLE DE CONVERSATION :
 - Parle de façon naturelle et détendue, comme dans une vraie conversation entre amis.
-- Ne sois pas excessivement enthousiaste : évite les exclamations inutiles comme "Super !", "Fantastique !", "Génial !".
-- Réagis de façon proportionnée : une réponse ordinaire mérite une réaction ordinaire.
-- Pose toujours une question simple à la fin de chaque réponse pour continuer la conversation.
-- Ne pose qu'une seule question par réponse. La question doit être courte et directe.
-- MÉMOIRE DES QUESTIONS : lis l'historique complet de la conversation avant de choisir ta question.
-  Ne répète jamais une question déjà posée dans cette session.
-  Alterne entre ces thèmes : famille, goûts, journée, travail/études, nourriture, ville,
-  animaux, voyages, loisirs, météo, amis. Choisis un thème non encore abordé.
+- Ne sois pas excessivement enthousiaste : évite "Super !", "Fantastique !", "Génial !".
+- Réagis de façon proportionnée à ce que dit l'apprenant.
+- Pose toujours une question simple à la fin de chaque réponse. Une seule, courte et directe.
+- Ne répète jamais une question déjà posée dans cette session.
+- Alterne entre ces thèmes : famille, loisirs, travail, voyages, nourriture, ville, météo, amis.
 
 MÉMOIRE DE L'APPRENANT :
-- Ce que tu sais déjà sur lui :
-{facts_str}
-- Toutes les 3 ou 4 réponses, pose une question qui s'appuie sur ce que tu sais déjà de lui
-  (ex: si tu sais qu'il habite à Rio, demande "Tu aimes aller à la plage à Rio ?").
-- Sinon, explore un nouveau thème.
-- À la fin de chaque réponse, si l'apprenant a partagé un fait personnel nouveau
-  (ville, travail, famille, goûts, habitudes), note-le dans ce format exact :
-    [FAITS: fait en français court ; autre fait]
-  Si aucun fait nouveau : [FAITS: aucun]
+{profile_str}
+- Utilise ces informations naturellement, comme si tu les savais depuis toujours.
+- Ne dis jamais "je me souviens que..." ou "tu m'as dit que...".
+- Toutes les 3 ou 4 réponses, construis ta question à partir de ce que tu sais déjà
+  (ex: si tu sais qu'il a une sœur, demande "Ta sœur travaille aussi ?").
+- Sinon, explore un nouveau thème pour enrichir le profil.
+
+EXTRACTION DE FAITS (obligatoire à chaque réponse) :
+Lis attentivement ce que l'apprenant vient de dire. Extrais TOUS les faits personnels.
+Format : [FAITS: sujet|relation|objet ; sujet|relation|objet]
+Relations : habite_à, travaille_dans, profession, aime, n_aime_pas, a_visité, veut_visiter, a_famille, parle
+Le sujet est "apprenant" ou un proche (frère, sœur, père, mère, ami, etc.)
+Exemples :
+  "J'habite à Lyon"              → [FAITS: apprenant|habite_à|Lyon]
+  "J'aime le foot"               → [FAITS: apprenant|aime|football]
+  "Je suis médecin"              → [FAITS: apprenant|profession|médecin]
+  "Ma sœur vit à Paris"         → [FAITS: sœur|habite_à|Paris]
+  "J'ai visité Tokyo"            → [FAITS: apprenant|a_visité|Tokyo]
+  "Bonjour, ça va ?"             → [FAITS: aucun]
+Si l'apprenant ne dit rien de personnel : [FAITS: aucun]
 
 NIVEAU DE LANGUE :
 - Utilise uniquement des mots très simples et courants.
 - Fais des phrases courtes (maximum 10 mots).
-- Utilise uniquement le présent de l'indicatif. Évite le subjonctif et le conditionnel.
+- Utilise uniquement le présent de l'indicatif.
 
 VOCABULAIRE PROGRESSIF :
-- Mots déjà connus de l'apprenant : {known_str}.
-- Réutilise librement ces mots connus.
-- Introduis AU MAXIMUM {new_words_per_turn} mot(s) nouveau(x) par réponse.
+- Mots déjà connus : {known_str}.
+- Réutilise ces mots librement. Introduis AU MAXIMUM {new_words_per_turn} mot(s) nouveau(x) par réponse.
 - Quand tu introduis un nouveau mot, utilise-le dans une phrase exemple simple.
-- À la fin de chaque réponse, liste les nouveaux mots dans ce format exact :
+- Liste les nouveaux mots en fin de réponse :
     [NOUVEAUX_MOTS: mot1=tradução1|exemple1 ; mot2=tradução2|exemple2]
-  Si aucun nouveau mot : [NOUVEAUX_MOTS: aucun]
+  Si aucun mot nouveau : [NOUVEAUX_MOTS: aucun]
 
-CORRECTIONS D'ERREURS :
-- Si l'apprenant fait une erreur grammaticale ou de vocabulaire importante, ajoute
-  une correction à la fin de ta réponse en portugais brésilien écrit UNIQUEMENT,
-  dans ce format exact :
-    [CORREÇÃO: xxx | Ótimo esforço ! explication en português + forme correcte en français]
-- Remplace xxx par exactement un de ces mots (sans guillemets, sans préfixe) :
-    conjugaison   — mauvaise forme verbale
-    accord        — erreur de genre ou de nombre
-    article       — article manquant ou incorrect
-    vocabulaire   — mauvais choix de mot ou faux ami
-    structure     — ordre des mots incorrect
-    préposition   — préposition manquante ou incorrecte
-    autre         — autre type d'erreur
-- Commence chaque correction par "Ótimo esforço !"
-- Ne corrige pas les erreurs mineures d'accent ou de prononciation.
+CORRECTIONS :
+- Si erreur grammaticale ou de vocabulaire importante, ajoute en fin de réponse :
+    [CORREÇÃO: xxx | Ótimo esforço ! explication en português + forme correcte]
+- xxx = conjugaison | accord | article | vocabulaire | structure | préposition | autre
+- Commence par "Ótimo esforço !". Ignore les erreurs mineures d'accent.
 - Ne parle JAMAIS la correction — texte affiché uniquement.
 - Si aucune correction : n'inclus pas la balise [CORREÇÃO].
 
-FORMAT DE RÉPONSE :
-Réponds d'abord en français simple, puis ajoute [FAITS:...], [NOUVEAUX_MOTS:...],
-et si besoin [CORREÇÃO:...]. Ne mélange jamais le français et le portugais dans le corps.
+FORMAT OBLIGATOIRE de fin de réponse (dans cet ordre) :
+  [FAITS: ...]
+  [NOUVEAUX_MOTS: ...]
+  [CORREÇÃO: ...] (seulement si erreur)
 """
 
 
@@ -104,10 +104,7 @@ def _parse_nouveaux(tag_content: str, vocab_file: str) -> list[str]:
             continue
         mot, rest = entry.split("=", 1)
         mot = mot.strip()
-        if "|" in rest:
-            traduction, exemple = rest.split("|", 1)
-        else:
-            traduction, exemple = rest.strip(), ""
+        traduction, exemple = (rest.split("|", 1) if "|" in rest else (rest.strip(), ""))
         rows.append({"mot": mot, "traduction": traduction.strip(),
                      "exemple": exemple.strip(), "date": str(date.today())})
         new_words.append(mot)
@@ -116,14 +113,24 @@ def _parse_nouveaux(tag_content: str, vocab_file: str) -> list[str]:
     return new_words
 
 
-def _parse_faits(tag_content: str, profile_file: str) -> list[str]:
+def _parse_faits(tag_content: str, profile_file: str) -> None:
     tag_content = tag_content.strip()
     if tag_content.lower() == "aucun" or not tag_content:
-        return []
-    facts = [f.strip() for f in tag_content.split(";") if f.strip()]
-    if facts:
-        add_facts(profile_file, facts)
-    return facts
+        return
+    triples: list[tuple[str, str, str]] = []
+    for entry in tag_content.split(";"):
+        parts = [p.strip() for p in entry.split("|")]
+        if len(parts) == 3:
+            triples.append((parts[0], parts[1], parts[2]))
+    if triples:
+        add_triples(profile_file, triples)
+
+
+def _trim_history(history: list[dict]) -> list[dict]:
+    """Keep system messages and the last MAX_HISTORY_EXCHANGES user/assistant pairs."""
+    system = [m for m in history if m["role"] == "system"]
+    exchanges = [m for m in history if m["role"] != "system"]
+    return system + exchanges[-(MAX_HISTORY_EXCHANGES * 2):]
 
 
 def chat(
@@ -139,7 +146,6 @@ def chat(
         system = build_system_prompt(vocab_file, profile_file, new_words_per_turn, enable_thinking)
         _history.append({"role": "system", "content": system})
 
-    # Every 4 user turns inject a reminder of questions already asked
     user_turns = sum(1 for m in _history if m["role"] == "user")
     if user_turns > 0 and user_turns % 4 == 0:
         bot_questions = [
@@ -147,19 +153,20 @@ def chat(
             for m in _history if m["role"] == "assistant" and "?" in m["content"]
         ]
         if bot_questions:
-            reminder = (
-                "[Rappel interne — ne pas afficher] "
-                "Questions déjà posées : "
+            _history.append({"role": "system", "content": (
+                "[Rappel — ne pas afficher] Questions déjà posées : "
                 + " | ".join(bot_questions[-8:])
-                + " — choisis un thème différent."
-            )
-            _history.append({"role": "system", "content": reminder})
+            )})
 
     _history.append({"role": "user", "content": user_text})
 
     full_response = ""
-    for chunk in ollama.chat(model=model, messages=_history, stream=True,
-                             think=enable_thinking):
+    for chunk in ollama.chat(
+        model=model,
+        messages=_trim_history(_history),
+        stream=True,
+        think=enable_thinking,
+    ):
         full_response += chunk["message"]["content"]
 
     full_response = _RE_THINKING.sub("", full_response).strip()
@@ -176,10 +183,16 @@ def chat(
         new_words = _parse_nouveaux(m.group(1), vocab_file)
         full_response = full_response[: m.start()].rstrip() + full_response[m.end():]
 
+    # Debug: show last 300 chars of raw response so we can see what tags the LLM emits
+    print(f"  [DBG raw tail] ...{full_response[-300:]!r}")
     m = _RE_FAITS.search(full_response)
     if m:
-        _parse_faits(m.group(1), profile_file)
+        raw_faits = m.group(1).strip()
+        print(f"  [FAITS] {raw_faits}")
+        _parse_faits(raw_faits, profile_file)
         full_response = full_response[: m.start()].rstrip() + full_response[m.end():]
+    else:
+        print("  [FAITS] tag absent")
 
     french_text = _RE_ANY_TAG.sub("", full_response).strip()
     _history.append({"role": "assistant", "content": french_text})

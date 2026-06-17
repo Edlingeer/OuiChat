@@ -187,7 +187,7 @@ cython_debug/
 # OuiChat — personal session data (user-specific, not for version control)
 vocabulary.md
 corrections.md
-profile.md
+profile.json
 
 # Claude Code
 .claude/

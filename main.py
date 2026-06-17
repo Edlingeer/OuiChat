@@ -6,18 +6,26 @@ WHISPER_MODEL      = "medium"
 WHISPER_DEVICE     = "cuda"         # set to "cpu" when using gemma4:26b
 SAMPLE_RATE        = 16000
 VAD_THRESHOLD      = 0.5
-SILENCE_DURATION_S = 1.2
+SILENCE_DURATION_S = 1.8
 PIPER_VOICE_PATH   = "fr_FR-upmc-medium.onnx"
 VOCAB_FILE         = "vocabulary.md"
 CORRECTIONS_FILE   = "corrections.md"
-PROFILE_FILE       = "profile.md"
+PROFILE_FILE       = "profile.json"
 NEW_WORDS_PER_TURN = 1
 ENABLE_THINKING    = False          # True → <|think|> chain-of-thought (slower)
 AUDIO_DEVICE        = None  # mic input  — set to index from check_audio.py if needed
 AUDIO_OUTPUT_DEVICE = 2 # speaker out — set to index from check_audio.py if needed
 # ───────────────────────────────────────────────────────────────────────────────
 
+import os
 import time
+
+# Resolve all data files relative to this script's directory
+_HERE = os.path.dirname(os.path.abspath(__file__))
+PIPER_VOICE_PATH = os.path.join(_HERE, PIPER_VOICE_PATH)
+VOCAB_FILE       = os.path.join(_HERE, VOCAB_FILE)
+CORRECTIONS_FILE = os.path.join(_HERE, CORRECTIONS_FILE)
+PROFILE_FILE     = os.path.join(_HERE, PROFILE_FILE)
 
 from vad import record_until_silence
 from stt import transcribe
