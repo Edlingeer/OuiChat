@@ -8,24 +8,28 @@ import os
 import tempfile
 from datetime import date
 
-import ollama
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
+import providers
 from corrections import parse_correction, save_correction
-from llm import chat, build_system_prompt, list_levels
+from llm import chat, opening, build_system_prompt, list_levels
 from memory import get_graph, summarize_for_prompt
-from persona import list_personas, load_persona
+from persona import list_personas, load_persona, is_male
 from stt import transcribe_file
 from tts import synthesize_to_bytes
 from vocab import get_known_words, add_words
 
 # ── Configuration (mirrors main.py) ──────────────────────────────────────────
-OLLAMA_MODEL       = "gemma4:12b"
+# LLM backend & model are configured in providers.py (or via env vars:
+#   LLM_BACKEND="ollama"|"nvidia", OLLAMA_MODEL, NVIDIA_MODEL, NVIDIA_API_KEY).
 WHISPER_MODEL      = "medium"
 WHISPER_DEVICE     = "cuda"
 PIPER_VOICE_PATH   = "fr_FR-upmc-medium.onnx"
+# fr_FR-upmc-medium is multi-speaker: 0 = jessica (féminine), 1 = pierre (masculine).
+PIPER_SPEAKER_FEMALE = 0
+PIPER_SPEAKER_MALE   = 1
 VOCAB_FILE         = "vocabulary.md"
 CORRECTIONS_FILE   = "corrections.md"
 PROFILE_FILE       = "profile.json"
@@ -43,8 +47,17 @@ PROFILE_FILE     = os.path.join(_HERE, PROFILE_FILE)
 
 app = FastAPI(title="OuiChat")
 
+import elevenlabs_api
+print(f"  OuiChat backends -> LLM: {providers.backend_label()}  |  "
+      f"STT: {elevenlabs_api.STT_BACKEND}  |  TTS: {elevenlabs_api.TTS_BACKEND}", flush=True)
+
 _current_persona: dict = load_persona(DEFAULT_PERSONA)
 _current_level: str = DEFAULT_LEVEL
+
+
+def _speaker_id() -> int:
+    """Pick the TTS voice matching the current persona's gender."""
+    return PIPER_SPEAKER_MALE if is_male(_current_persona) else PIPER_SPEAKER_FEMALE
 
 
 @app.post("/turn")
@@ -65,7 +78,6 @@ async def turn(audio: UploadFile = File(...)):
 
     french_reply, correcao, new_words = chat(
         user_text=user_text,
-        model=OLLAMA_MODEL,
         vocab_file=VOCAB_FILE,
         profile_file=PROFILE_FILE,
         new_words_per_turn=NEW_WORDS_PER_TURN,
@@ -79,12 +91,31 @@ async def turn(audio: UploadFile = File(...)):
         _, correction_text = parse_correction(correcao)
         save_correction(CORRECTIONS_FILE, user_text, correcao)
 
-    wav_bytes = synthesize_to_bytes(french_reply, PIPER_VOICE_PATH)
+    wav_bytes = synthesize_to_bytes(french_reply, PIPER_VOICE_PATH, speaker_id=_speaker_id())
 
     return {
         "user_text":  user_text,
         "bot_reply":  french_reply,
         "correction": correction_text,
+        "new_words":  new_words,
+        "audio_b64":  base64.b64encode(wav_bytes).decode(),
+    }
+
+
+@app.post("/greeting")
+def greeting():
+    """Bot opens the conversation (called when a new session starts)."""
+    french_reply, new_words = opening(
+        vocab_file=VOCAB_FILE,
+        profile_file=PROFILE_FILE,
+        new_words_per_turn=NEW_WORDS_PER_TURN,
+        enable_thinking=ENABLE_THINKING,
+        persona_data=_current_persona,
+        level=_current_level,
+    )
+    wav_bytes = synthesize_to_bytes(french_reply, PIPER_VOICE_PATH, speaker_id=_speaker_id())
+    return {
+        "bot_reply":  french_reply,
         "new_words":  new_words,
         "audio_b64":  base64.b64encode(wav_bytes).decode(),
     }
@@ -149,8 +180,7 @@ async def define_word(body: dict):
         f"Contexte : « {context} ». "
         f"Réponds UNIQUEMENT avec ce format, sans rien d'autre : traduction|exemple_en_français"
     )
-    resp = ollama.generate(model=OLLAMA_MODEL, prompt=prompt, think=False)
-    raw  = resp["response"].strip().splitlines()[0]  # take first line only
+    raw  = providers.generate(prompt).strip().splitlines()[0]  # take first line only
     parts      = [p.strip() for p in raw.split("|", 1)]
     traduction = parts[0] if parts else raw
     exemple    = parts[1] if len(parts) > 1 else ""
@@ -183,6 +213,16 @@ def corrections():
         return {"content": ""}
     with open(CORRECTIONS_FILE, encoding="utf-8") as f:
         return {"content": f.read()}
+
+
+@app.get("/")
+def index():
+    """Serve the app shell with no-cache headers so browsers never run a stale
+    index.html (which would miss new frontend features like the opening greeting)."""
+    return FileResponse(
+        os.path.join(_HERE, "static", "index.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
 
 
 # Serve the frontend — must be last so API routes take priority

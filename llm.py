@@ -1,9 +1,12 @@
-"""Ollama wrapper: history management, tag parsing, thinking-token stripping."""
+"""LLM wrapper: history management, tag parsing, thinking-token stripping.
+
+Backend (local Ollama vs NVIDIA hosted API) is selected in providers.py.
+"""
 
 import re
 from datetime import date
 
-import ollama
+import providers
 
 from vocab import add_words, get_known_words
 from memory import add_triples, get_graph, summarize_for_prompt
@@ -101,13 +104,23 @@ VOCABULAIRE PROGRESSIF :
 - Mots déjà connus : {known_str}.
 - Réutilise ces mots librement. Introduis AU MAXIMUM {new_words_per_turn} mot(s) nouveau(x) par réponse.
 - Quand tu introduis un nouveau mot, utilise-le naturellement dans ta réponse.
-- [NOUVEAUX_MOTS: mot=tradução|exemple ; ...]  —  si aucun : [NOUVEAUX_MOTS: aucun]
+- Enregistre dans [NOUVEAUX_MOTS] TOUT mot français nouveau que tu introduis
+  OU que l'apprenant te demande d'expliquer.
+- Format de CHAQUE entrée : motfrançais=traducao_portugais|exemple_en_français
+  · à gauche du «=» : le mot français réel
+  · entre «=» et «|» : sa traduction en portugais brésilien
+  · après «|» : une courte phrase d'exemple en français
+  Plusieurs entrées séparées par « ; ». Si aucun mot nouveau : [NOUVEAUX_MOTS: aucun]
+- Exemple concret : [NOUVEAUX_MOTS: dessert=sobremesa|J'adore le dessert au chocolat]
+- N'écris JAMAIS les mots-gabarits « mot », « traducao » ou « exemple » —
+  remplace-les toujours par les vraies valeurs.
 
 CORRECTIONS :
 - Si erreur grammaticale ou de vocabulaire importante :
-    [CORREÇÃO: type | Ótimo esforço ! explication en português. Forme correcte : "..."]
+    [CORREÇÃO: type | Ótimo esforço ! explicação EM PORTUGUÊS. Forme correcte : "..."]
 - type = conjugaison | accord | article | vocabulaire | structure | préposition | autre
-- Inclus toujours la forme correcte entre guillemets à la fin de la correction.
+- L'explication doit TOUJOURS être en portugais brésilien, jamais en français.
+- Inclus toujours la forme correcte française entre guillemets à la fin de la correction.
 - Corrige uniquement les phrases avec une intention communicative claire mais une erreur de forme.
 - Ignore les erreurs mineures d'accent. Ne parle JAMAIS la correction.
 - Si aucune erreur : n'inclus pas la balise [CORREÇÃO].
@@ -115,9 +128,9 @@ CORRECTIONS :
 ---
 À LA FIN DE CHAQUE RÉPONSE, colle ces balises dans cet ordre exact :
 
-[FAITS: sujet|relation|objet ; sujet|relation|objet]   ← ou [FAITS: aucun]
-[NOUVEAUX_MOTS: ...]                                    ← ou [NOUVEAUX_MOTS: aucun]
-[CORREÇÃO: ...]                                         ← seulement si erreur
+[FAITS: sujet|relation|objet ; sujet|relation|objet]        ← ou [FAITS: aucun]
+[NOUVEAUX_MOTS: motfrançais=traducao|exemple ; ...]         ← ou [NOUVEAUX_MOTS: aucun]
+[CORREÇÃO: type | explicação em português. Forme correcte : "..."]  ← seulement si erreur
 
 Relations FAITS : nom, habite_à, travaille_dans, profession, aime, n_aime_pas, a_visité, veut_visiter, a_famille, parle
 Exemples :
@@ -128,6 +141,12 @@ Exemples :
   "Ma sœur vit à Paris"  → [FAITS: sœur|habite_à|Paris]
   "Bonjour !"            → [FAITS: aucun]
 """
+
+
+# Literal template placeholders the model sometimes copies verbatim instead of
+# filling in — never store these as real vocabulary.
+_NOUVEAUX_PLACEHOLDERS = {"mot", "motfrançais", "motfrancais", "tradução",
+                          "traducao", "traduction", "exemple", "exemplo", "aucun"}
 
 
 def _parse_nouveaux(tag_content: str, vocab_file: str) -> list[str]:
@@ -143,8 +162,16 @@ def _parse_nouveaux(tag_content: str, vocab_file: str) -> list[str]:
         mot, rest = entry.split("=", 1)
         mot = mot.strip()
         traduction, exemple = (rest.split("|", 1) if "|" in rest else (rest.strip(), ""))
-        rows.append({"mot": mot, "traduction": traduction.strip(),
-                     "exemple": exemple.strip(), "date": str(date.today())})
+        traduction, exemple = traduction.strip(), exemple.strip()
+        # Skip malformed entries where the model left the template placeholders in
+        # (e.g. "mot=dessert|exemple") — these would pollute the vocab file.
+        if (not mot or not traduction
+                or mot.lower() in _NOUVEAUX_PLACEHOLDERS
+                or traduction.lower() in _NOUVEAUX_PLACEHOLDERS):
+            print(f"  [NOUVEAUX_MOTS ignoré — gabarit non rempli] {entry!r}")
+            continue
+        rows.append({"mot": mot, "traduction": traduction,
+                     "exemple": exemple, "date": str(date.today())})
         new_words.append(mot)
     if rows:
         add_words(vocab_file, rows)
@@ -173,7 +200,6 @@ def _trim_history(history: list[dict]) -> list[dict]:
 
 def chat(
     user_text: str,
-    model: str,
     vocab_file: str,
     profile_file: str,
     new_words_per_turn: int,
@@ -201,14 +227,17 @@ def chat(
     _history.append({"role": "user", "content": user_text})
 
     full_response = ""
-    for chunk in ollama.chat(
-        model=model,
-        messages=_trim_history(_history),
-        stream=True,
-        think=enable_thinking,
-    ):
-        full_response += chunk["message"]["content"]
+    for chunk in providers.stream_chat(_trim_history(_history), enable_thinking):
+        full_response += chunk
 
+    return _extract_and_record(full_response, vocab_file, profile_file)
+
+
+def _extract_and_record(
+    full_response: str, vocab_file: str, profile_file: str
+) -> tuple[str, str | None, list[str]]:
+    """Strip thinking tokens, parse/record the trailing tags, and append the clean
+    French reply to history. Returns (french_text, correcao_or_None, new_word_list)."""
     full_response = _RE_THINKING.sub("", full_response).strip()
 
     correcao: str | None = None
@@ -239,3 +268,33 @@ def chat(
     french_text = _RE_ANY_TAG.sub("", full_response).strip()
     _history.append({"role": "assistant", "content": french_text})
     return french_text, correcao, new_words
+
+
+def opening(
+    vocab_file: str,
+    profile_file: str,
+    new_words_per_turn: int,
+    enable_thinking: bool,
+    persona_data: dict,
+    level: str = "a1",
+) -> tuple[str, list[str]]:
+    """Have the bot open the conversation itself (greeting + one question).
+    Starts a fresh session. Returns (french_greeting, new_word_list)."""
+    _history.clear()
+    system = build_system_prompt(vocab_file, profile_file, new_words_per_turn,
+                                 enable_thinking, persona_data, level)
+    _history.append({"role": "system", "content": system})
+
+    # Ephemeral nudge — asks the model to open. Not kept in history; only its reply is.
+    nudge = {"role": "user", "content": (
+        "[Début de session] Ouvre toi-même la conversation : salue l'apprenant "
+        "chaleureusement en une phrase, puis pose UNE seule question simple et "
+        "ouverte pour lancer l'échange. Ne corrige rien (il n'a encore rien dit)."
+    )}
+    full_response = ""
+    for chunk in providers.stream_chat(_trim_history(_history) + [nudge], enable_thinking):
+        full_response += chunk
+
+    french_text, _correcao, new_words = _extract_and_record(
+        full_response, vocab_file, profile_file)
+    return french_text, new_words

@@ -1,13 +1,17 @@
 """French A1 language learning bot — entry point."""
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-OLLAMA_MODEL       = "gemma4:12b"   # or "gemma4:26b" (set WHISPER_DEVICE="cpu")
+# LLM backend & model are configured in providers.py (or via env vars:
+#   LLM_BACKEND="ollama"|"nvidia", OLLAMA_MODEL, NVIDIA_MODEL, NVIDIA_API_KEY).
 WHISPER_MODEL      = "medium"
-WHISPER_DEVICE     = "cuda"         # set to "cpu" when using gemma4:26b
+WHISPER_DEVICE     = "cuda"         # set to "cpu" if VRAM is tight (qwen3.6:27b ~17 GB + Whisper)
 SAMPLE_RATE        = 16000
 VAD_THRESHOLD      = 0.5
 SILENCE_DURATION_S = 1.8
 PIPER_VOICE_PATH   = "fr_FR-upmc-medium.onnx"
+# fr_FR-upmc-medium is multi-speaker: 0 = jessica (féminine), 1 = pierre (masculine).
+PIPER_SPEAKER_FEMALE = 0
+PIPER_SPEAKER_MALE   = 1
 VOCAB_FILE         = "vocabulary.md"
 CORRECTIONS_FILE   = "corrections.md"
 PROFILE_FILE       = "profile.json"
@@ -31,12 +35,13 @@ PROFILE_FILE     = os.path.join(_HERE, PROFILE_FILE)
 
 from vad import record_until_silence
 from stt import transcribe
-from llm import chat
+from llm import chat, opening
 from tts import speak
 from vocab import get_known_words
 from corrections import save_correction, parse_correction
-from persona import load_persona
+from persona import load_persona, is_male
 from llm import list_levels
+import providers
 
 
 def _banner() -> None:
@@ -44,7 +49,7 @@ def _banner() -> None:
     print("━" * 52)
     print("  🇫🇷  French A1 Conversation Bot")
     print("━" * 52)
-    print(f"  LLM    : {OLLAMA_MODEL}")
+    print(f"  LLM    : {providers.backend_label()}")
     print(f"  Whisper: {WHISPER_MODEL}  [{WHISPER_DEVICE.upper()}]")
     print(f"  Vocab  : {len(known)} mots appris")
     print("━" * 52)
@@ -54,9 +59,16 @@ def _banner() -> None:
 def main() -> None:
     _banner()
     persona = load_persona(DEFAULT_PERSONA)
+    speaker_id = PIPER_SPEAKER_MALE if is_male(persona) else PIPER_SPEAKER_FEMALE
     levels  = {l["id"]: l["name"] for l in list_levels()}
     print(f"  Persona : {persona['name']}")
     print(f"  Niveau  : {levels.get(DEFAULT_LEVEL, DEFAULT_LEVEL)}\n")
+
+    # Bot opens the conversation to get things going
+    greeting, _ = opening(VOCAB_FILE, PROFILE_FILE, NEW_WORDS_PER_TURN,
+                          ENABLE_THINKING, persona, DEFAULT_LEVEL)
+    print(f"Bot : {greeting}")
+    speak(greeting, PIPER_VOICE_PATH, device=AUDIO_OUTPUT_DEVICE, speaker_id=speaker_id)
 
     while True:
         # 1. Record
@@ -77,7 +89,6 @@ def main() -> None:
         # 3. LLM reply (chat() returns cleaned text; we print it here)
         french_reply, correcao, new_words = chat(
             user_text=user_text,
-            model=OLLAMA_MODEL,
             vocab_file=VOCAB_FILE,
             profile_file=PROFILE_FILE,
             new_words_per_turn=NEW_WORDS_PER_TURN,
@@ -98,7 +109,7 @@ def main() -> None:
             save_correction(CORRECTIONS_FILE, user_text, correcao)
 
         # 5. Speak the French reply, then pause before reopening the mic
-        speak(french_reply, PIPER_VOICE_PATH, device=AUDIO_OUTPUT_DEVICE)
+        speak(french_reply, PIPER_VOICE_PATH, device=AUDIO_OUTPUT_DEVICE, speaker_id=speaker_id)
         time.sleep(0.6)
 
         # 6. Vocabulary count
