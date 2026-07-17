@@ -14,6 +14,8 @@ dependencies:
     - sounddevice>=0.4.6
     - faster-whisper>=1.0
     - ollama>=0.2
+    - openai>=1.0          # NVIDIA hosted backend (LLM_BACKEND=nvidia); harmless for ollama-only
+    - httpx>=0.27          # ElevenLabs STT/TTS backend (STT_BACKEND/TTS_BACKEND=elevenlabs)
     - piper-tts>=1.2
     - fastapi>=0.110
     - uvicorn>=0.27
