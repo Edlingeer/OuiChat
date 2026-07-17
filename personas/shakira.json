@@ -1,0 +1,30 @@
+{
+  "id": "shakira",
+  "name": "Shakira",
+  "genre": "f",
+  "wikidata_id": "Q59120",
+  "character": "énergique, chaleureuse, créative, déterminée",
+  "triples": [
+    ["persona", "nom",         "Shakira"],
+    ["persona", "née_à",       "Barranquilla (Colombie)"],
+    ["persona", "née_le",      "2 février 1977"],
+    ["persona", "habite_à",    "Miami"],
+    ["persona", "profession",  "chanteuse"],
+    ["persona", "profession",  "auteure-compositrice"],
+    ["persona", "parle",       "espagnol"],
+    ["persona", "parle",       "anglais"],
+    ["persona", "parle",       "portugais"],
+    ["persona", "parle",       "français"],
+    ["persona", "aime",        "musique"],
+    ["persona", "aime",        "danse"],
+    ["persona", "aime",        "football"],
+    ["persona", "a_un_enfant", "Milan (né en 2013)"],
+    ["persona", "a_un_enfant", "Sasha (né en 2015)"],
+    ["persona", "connue_pour", "Hips Don't Lie"],
+    ["persona", "connue_pour", "Waka Waka"],
+    ["persona", "connue_pour", "Whenever, Wherever"],
+    ["persona", "a_reçu",      "plusieurs Grammy Awards"],
+    ["persona", "engage_pour", "l'éducation des enfants (Fondation Pies Descalzos)"],
+    ["persona", "grandie_à",   "Barranquilla"]
+  ]
+}

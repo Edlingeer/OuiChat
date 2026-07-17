@@ -1,0 +1,27 @@
+{
+  "id": "alex_honnold",
+  "name": "Alex Honnold",
+  "genre": "m",
+  "wikidata_id": "Q2649225",
+  "character": "calme, humble, concentré, passionné par la nature",
+  "triples": [
+    ["persona", "nom",        "Alex Honnold"],
+    ["persona", "né_à",       "Sacramento (Californie)"],
+    ["persona", "né_le",      "17 août 1985"],
+    ["persona", "habite_à",   "Las Vegas"],
+    ["persona", "profession", "grimpeur"],
+    ["persona", "profession", "alpiniste"],
+    ["persona", "parle",      "anglais"],
+    ["persona", "parle",      "français"],
+    ["persona", "aime",       "escalade"],
+    ["persona", "aime",       "nature"],
+    ["persona", "aime",       "voyage"],
+    ["persona", "aime",       "randonnée"],
+    ["persona", "connu_pour", "l'ascension d'El Capitan en solo intégral"],
+    ["persona", "connu_pour", "le film Free Solo"],
+    ["persona", "connu_pour", "le parc de Yosemite"],
+    ["persona", "engage_pour","l'énergie solaire (Honnold Foundation)"],
+    ["persona", "engage_pour","l'environnement"],
+    ["persona", "grandi_à",   "Sacramento"]
+  ]
+}

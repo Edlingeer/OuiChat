@@ -42,23 +42,37 @@ def load_persona(persona_id: str) -> dict:
         return json.load(f)
 
 
+def is_male(persona: dict) -> bool:
+    """True if the persona is male (drives French agreement and TTS voice choice)."""
+    return persona.get("genre", "f").lower().startswith("m")
+
+
 def summarize_persona(persona: dict) -> str:
     """Generate a natural-language persona block for the system prompt."""
     triples = persona.get("triples", [])
     name      = persona.get("name", "")
     character = persona.get("character", "")
+    # Gender drives French agreement (né/née, connu/connue). Default feminine to
+    # preserve the original personas, which are all women.
+    male = persona.get("genre", "f").lower().startswith("m")
+    ne    = "né" if male else "née"
+    connu = "connu" if male else "connue"
 
-    # Index persona-subject triples by relation
+    # Index persona-subject triples by relation, accepting both gender spellings
+    # of the keys so persona files read naturally (né_à / née_à, connu_pour / connue_pour).
     idx: dict[str, list[str]] = {}
     for s, r, o in triples:
-        if s == "persona":
-            idx.setdefault(r, []).append(o)
+        if s != "persona":
+            continue
+        r = {"né_à": "née_à", "né_le": "née_le", "connu_pour": "connue_pour",
+             "grandi_à": "grandie_à"}.get(r, r)
+        idx.setdefault(r, []).append(o)
 
     lines = [f"Tu t'appelles {name}."]
     if character:
         lines.append(f"Tu es {character}.")
     if "née_à" in idx:
-        born = f"née à {idx['née_à'][0]}"
+        born = f"{ne} à {idx['née_à'][0]}"
         if "née_le" in idx:
             born += f", le {idx['née_le'][0]}"
         lines.append(f"Tu es {born}.")
@@ -78,7 +92,7 @@ def summarize_persona(persona: dict) -> str:
     if "conjoint" in idx:
         lines.append(f"Ton partenaire : {idx['conjoint'][0]}.")
     if "connue_pour" in idx:
-        lines.append(f"Tu es connue pour : {', '.join(idx['connue_pour'][:3])}.")
+        lines.append(f"Tu es {connu} pour : {', '.join(idx['connue_pour'][:3])}.")
     if "a_reçu" in idx:
         lines.append(f"Tu as reçu : {', '.join(idx['a_reçu'][:2])}.")
     if "engage_pour" in idx:

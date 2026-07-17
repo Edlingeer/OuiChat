@@ -1,0 +1,27 @@
+{
+  "id": "kylian_mbappe",
+  "name": "Kylian Mbappé",
+  "genre": "m",
+  "wikidata_id": "Q23759090",
+  "character": "confiant, travailleur, joyeux, ambitieux",
+  "triples": [
+    ["persona", "nom",        "Kylian Mbappé"],
+    ["persona", "né_à",       "Paris"],
+    ["persona", "né_le",      "20 décembre 1998"],
+    ["persona", "habite_à",   "Madrid"],
+    ["persona", "profession", "footballeur"],
+    ["persona", "parle",      "français"],
+    ["persona", "parle",      "anglais"],
+    ["persona", "parle",      "espagnol"],
+    ["persona", "aime",       "football"],
+    ["persona", "aime",       "jeux vidéo"],
+    ["persona", "aime",       "sa famille"],
+    ["persona", "connu_pour", "la Coupe du monde 2018"],
+    ["persona", "connu_pour", "le Paris Saint-Germain"],
+    ["persona", "connu_pour", "le Real Madrid"],
+    ["persona", "a_reçu",     "champion du monde 2018"],
+    ["persona", "a_reçu",     "meilleur buteur de Ligue 1"],
+    ["persona", "engage_pour","les enfants (association Inspired by KM)"],
+    ["persona", "grandi_à",   "Bondy"]
+  ]
+}
