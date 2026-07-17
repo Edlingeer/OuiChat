@@ -1,10 +1,38 @@
-"""Speech-to-text wrapper around faster-whisper."""
+"""Speech-to-text wrapper around faster-whisper (default) or ElevenLabs Scribe
+(optional, via STT_BACKEND=elevenlabs)."""
+
+import io
+import wave
 
 import numpy as np
 from faster_whisper import WhisperModel
 
+import elevenlabs_api
+
 
 _model: WhisperModel | None = None
+
+
+def _elevenlabs_stt(audio_bytes: bytes, filename: str = "audio.wav") -> str:
+    """Call ElevenLabs STT, degrading to '' (treated as no speech) on error rather
+    than crashing the turn — e.g. if the API key lacks the speech_to_text scope."""
+    try:
+        return elevenlabs_api.transcribe_bytes(audio_bytes, filename=filename)
+    except Exception as e:
+        print(f"  [ElevenLabs STT error] {type(e).__name__}: {str(e)[:200]}", flush=True)
+        return ""
+
+
+def _pcm16_wav_bytes(audio: np.ndarray, sample_rate: int) -> bytes:
+    """Pack a float32 [-1, 1] mono array into 16-bit WAV bytes (for upload)."""
+    pcm = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sample_rate)
+        w.writeframes(pcm.tobytes())
+    return buf.getvalue()
 
 
 def _load_model(model_size: str, device: str) -> WhisperModel:
@@ -28,6 +56,9 @@ def transcribe(
     if len(audio) < int(0.8 * sample_rate):
         return ""
 
+    if elevenlabs_api.use_stt():
+        return _elevenlabs_stt(_pcm16_wav_bytes(audio, sample_rate))
+
     model = _load_model(model_size, device)
     segments, _ = model.transcribe(
         audio,
@@ -47,6 +78,11 @@ def transcribe(
 def transcribe_file(path: str, model_size: str, device: str) -> str:
     """Transcribe from a file path — used by the web API.
     faster-whisper calls ffmpeg internally to decode WebM/MP4/etc."""
+    if elevenlabs_api.use_stt():
+        import os
+        with open(path, "rb") as f:
+            return _elevenlabs_stt(f.read(), filename=os.path.basename(path))
+
     model = _load_model(model_size, device)
     segments, _ = model.transcribe(
         path,
