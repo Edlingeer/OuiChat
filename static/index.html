@@ -370,7 +370,7 @@
       body:    JSON.stringify({ id }),
     });
     transcript.innerHTML = '';
-    setStatus('Appuyer pour parler', '');
+    await startConversation();
   }
 
   async function setPersona(id) {
@@ -384,7 +384,7 @@
     if (data.ok) {
       currentPersonaName = data.name;
       transcript.innerHTML = '';
-      setStatus('Appuyer pour parler', '');
+      await startConversation();
     }
   }
 
@@ -576,9 +576,37 @@
 
   // ── Session reset ────────────────────────────────────────────────────────
   async function resetSession() {
-    await fetch('/reset', { method: 'POST' });
     transcript.innerHTML = '';
-    setStatus('Appuyer pour parler', '');
+    await startConversation();
+  }
+
+  // ── Bot opens the conversation ─────────────────────────────────────────────
+  async function startConversation() {
+    setStatus('⏳ ' + currentPersonaName + ' prépare…', 'processing');
+    btn.disabled = true;
+    isProcessing = true;
+    try {
+      const res  = await fetch('/greeting', { method: 'POST' });
+      if (!res.ok) {
+        setStatus('Greeting indisponible — redémarrez le serveur (HTTP ' + res.status + ')', '');
+        console.error('greeting failed', res.status, await res.text());
+        return;
+      }
+      const data = await res.json();
+      if (data.bot_reply) {
+        addMsg('bot', data.bot_reply);
+        addNewWords(data.new_words);
+        setStatus('🔊 ' + currentPersonaName + ' parle…', 'speaking');
+        if (data.audio_b64) await playWav(data.audio_b64);
+      }
+      setStatus('Appuyer pour parler', '');
+    } catch (err) {
+      setStatus('Erreur réseau', '');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      isProcessing = false;
+    }
   }
 
   // ── Word popup ───────────────────────────────────────────────────────────
@@ -630,11 +658,12 @@
   popup.addEventListener('mouseleave', hidePopup);
 
   // Load dropdowns and request mic permission on page load
-  loadPersonas();
-  loadLevels();
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(s => s.getTracks().forEach(t => t.stop()))
     .catch(() => setStatus('Accès au micro refusé'));
+
+  // Load dropdowns, then let the bot open the conversation
+  Promise.all([loadPersonas(), loadLevels()]).then(startConversation);
 
   // ── Button events ────────────────────────────────────────────────────────
   btn.addEventListener('mousedown',  e => { e.preventDefault(); startRecording(); });
