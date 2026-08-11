@@ -121,6 +121,93 @@ def greeting():
     }
 
 
+# ── Text-only endpoints for on-device speech (phone STT/TTS via Web Speech API) ──
+# The browser transcribes/synthesises; the server only handles text + the LLM, so
+# no audio crosses the wire and no server-side Whisper/Piper/ElevenLabs is used.
+
+@app.post("/turn_text")
+def turn_text(body: dict):
+    """Receive already-transcribed text → LLM → return text (no audio)."""
+    user_text = (body.get("text") or "").strip()
+    if not user_text:
+        return JSONResponse({"error": "no_text"}, status_code=400)
+
+    french_reply, correcao, new_words = chat(
+        user_text=user_text,
+        vocab_file=VOCAB_FILE,
+        profile_file=PROFILE_FILE,
+        new_words_per_turn=NEW_WORDS_PER_TURN,
+        enable_thinking=ENABLE_THINKING,
+        persona_data=_current_persona,
+        level=_current_level,
+    )
+
+    correction_text = None
+    if correcao:
+        _, correction_text = parse_correction(correcao)
+        save_correction(CORRECTIONS_FILE, user_text, correcao)
+
+    return {
+        "user_text":  user_text,
+        "bot_reply":  french_reply,
+        "correction": correction_text,
+        "new_words":  new_words,
+    }
+
+
+@app.post("/greeting_text")
+def greeting_text():
+    """Bot opens the conversation, text only (browser speaks it)."""
+    french_reply, new_words = opening(
+        vocab_file=VOCAB_FILE,
+        profile_file=PROFILE_FILE,
+        new_words_per_turn=NEW_WORDS_PER_TURN,
+        enable_thinking=ENABLE_THINKING,
+        persona_data=_current_persona,
+        level=_current_level,
+    )
+    return {"bot_reply": french_reply, "new_words": new_words}
+
+
+@app.post("/turn_stt")
+async def turn_stt(audio: UploadFile = File(...)):
+    """Hybrid: browser audio → server STT (Whisper) → LLM → TEXT out (no server
+    TTS — the browser speaks the reply with its own voice)."""
+    ext = os.path.splitext(audio.filename or "")[1] or ".webm"
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(await audio.read())
+        tmp_path = tmp.name
+    try:
+        user_text = transcribe_file(tmp_path, WHISPER_MODEL, WHISPER_DEVICE)
+    finally:
+        os.unlink(tmp_path)
+
+    if not user_text:
+        return JSONResponse({"error": "no_speech"})
+
+    french_reply, correcao, new_words = chat(
+        user_text=user_text,
+        vocab_file=VOCAB_FILE,
+        profile_file=PROFILE_FILE,
+        new_words_per_turn=NEW_WORDS_PER_TURN,
+        enable_thinking=ENABLE_THINKING,
+        persona_data=_current_persona,
+        level=_current_level,
+    )
+
+    correction_text = None
+    if correcao:
+        _, correction_text = parse_correction(correcao)
+        save_correction(CORRECTIONS_FILE, user_text, correcao)
+
+    return {
+        "user_text":  user_text,
+        "bot_reply":  french_reply,
+        "correction": correction_text,
+        "new_words":  new_words,
+    }
+
+
 @app.get("/personas")
 def get_personas():
     """List available personas."""
@@ -137,7 +224,8 @@ def set_persona(body: dict):
     _current_persona = load_persona(persona_id)
     from llm import _history
     _history.clear()
-    return {"ok": True, "name": _current_persona["name"]}
+    return {"ok": True, "name": _current_persona["name"],
+            "genre": _current_persona.get("genre", "f")}
 
 
 @app.get("/levels")

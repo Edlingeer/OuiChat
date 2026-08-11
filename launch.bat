@@ -20,8 +20,8 @@ REM ─────────────────────────�
 REM ── Optional ElevenLabs speech backends (default local Whisper/Piper) ────────
 REM Set your key once, in a terminal:  setx ELEVENLABS_API_KEY "sk_xxxxxxxx"
 REM (then reopen the terminal). Values: "whisper"/"piper" (local) or "elevenlabs".
-set "STT_BACKEND=elevenlabs"    REM speech-to-text via ElevenLabs Scribe (verified working)
-set "TTS_BACKEND=elevenlabs"    REM text-to-speech via ElevenLabs (verified working)
+set "STT_BACKEND=whisper"       REM local Whisper (used by server + Mixte modes; free, faithful)
+set "TTS_BACKEND=piper"         REM local Piper (only used by full-server mode)
 REM ───────────────────────────────────────────────────────────────────────────
 
 REM Free port 8000 from any previous server still running (prevents a stale

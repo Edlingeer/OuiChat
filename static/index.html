@@ -12,9 +12,11 @@
       background: #0d0d1a;
       color: #dde0f0;
       height: 100vh;
+      height: 100dvh;               /* mobile: track the visible area, not the URL-bar-inflated 100vh */
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      overscroll-behavior: none;    /* no pull-to-refresh / bounce while holding the talk button */
     }
 
     /* ── Header ── */
@@ -65,11 +67,43 @@
 
     /* ── Chat panel ── */
     #chat-panel {
+      position: relative;
       flex: 1;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
+
+    /* Start gate — one tap to unlock audio + request mic + open the conversation
+       (required on iOS, which blocks speech/mic outside a user gesture). */
+    #start-gate {
+      position: absolute;
+      inset: 0;
+      z-index: 120;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px;
+      text-align: center;
+      background: rgba(13, 13, 26, 0.92);
+    }
+    #start-gate.hidden { display: none; }
+    #startBtn {
+      padding: 16px 30px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      background: #1c3a5e;
+      color: #cfe4ff;
+      border: 1px solid #3a5f8e;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    #startBtn:hover  { background: #234a76; border-color: #4a6f9e; }
+    #startBtn:active { transform: scale(0.98); }
+    #start-hint { font-size: 0.8rem; color: #6a6a8a; max-width: 260px; }
 
     #transcript {
       flex: 1;
@@ -167,6 +201,8 @@
       justify-content: center;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none;   /* no long-press menu on mobile */
+      touch-action: none;            /* holding the button doesn't scroll the page */
       flex-shrink: 0;
     }
     #talkBtn:hover:not(:disabled) { border-color: #5a5acc; background: #20203a; }
@@ -199,6 +235,7 @@
 
     /* ── Side panel ── */
     #side-panel {
+      position: relative;
       width: 300px;
       border-left: 1px solid #252545;
       background: #10101f;
@@ -207,6 +244,19 @@
       overflow: hidden;
     }
     #side-panel.open { display: flex; }
+    #side-close {
+      position: absolute;
+      top: 7px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: #777;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    #side-close:hover { color: #ccc; }
     #side-title {
       padding: 12px 16px;
       font-size: 0.8rem;
@@ -267,9 +317,94 @@
     #popup-btn:hover:not(:disabled) { background: #30306a; color: #ccf; }
     #popup-btn:disabled { opacity: 0.6; cursor: default; }
 
+    /* ── Device-voice picker (⚙) ── */
+    #voice-cfg {
+      position: fixed;
+      top: 54px;
+      right: 12px;
+      z-index: 210;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: #1c1c38;
+      border: 1px solid #3a3a70;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      font-size: 0.82rem;
+      color: #aab;
+      max-width: min(320px, calc(100vw - 24px));
+    }
+    #voice-cfg.visible { display: flex; }
+    #voice-cfg .vc-title { font-weight: 600; color: #ccd; letter-spacing: 0.05em; }
+    #voice-cfg label { display: flex; flex-direction: column; gap: 4px; }
+    #voice-cfg select {
+      background: #1a1a35;
+      border: 1px solid #252545;
+      border-radius: 6px;
+      color: #aab;
+      font-size: 0.78rem;
+      padding: 5px 6px;
+      max-width: 100%;
+    }
+    #vc-test {
+      background: #25254a;
+      border: 1px solid #4a4a9a;
+      border-radius: 6px;
+      color: #aab;
+      font-size: 0.78rem;
+      padding: 6px 0;
+      cursor: pointer;
+    }
+    #vc-test:hover { background: #30306a; color: #ccf; }
+
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #252545; border-radius: 3px; }
+
+    /* ── Mobile / narrow screens ────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      header {
+        flex-wrap: wrap;
+        padding: 8px 10px;
+        gap: 6px;
+      }
+      header h1 { font-size: 1rem; flex: 0 0 auto; }
+      #personaSelect, #levelSelect {
+        flex: 1 1 0;
+        min-width: 0;                /* allow the selects to shrink & share the row */
+        font-size: 0.72rem;
+        padding: 5px 6px;
+      }
+      header nav {
+        flex: 1 1 100%;              /* nav drops to its own full-width row */
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      header nav button { padding: 6px 8px; font-size: 0.7rem; }
+
+      #transcript { padding: 14px 10px; gap: 8px; }
+      .msg, .correction, .new-words { max-width: 88%; }
+      .msg { font-size: 0.95rem; }
+
+      #controls {
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+        gap: 12px;
+      }
+      #status { min-width: 0; flex: 1; font-size: 0.78rem; }
+      #talkBtn { width: 66px; height: 66px; font-size: 1.7rem; }
+      #resetBtn { padding: 8px 10px; }
+
+      /* Side panel becomes a slide-over overlay instead of squishing the chat */
+      #side-panel {
+        position: fixed;
+        top: 0; right: 0; bottom: 0;
+        width: 86%;
+        max-width: 340px;
+        z-index: 150;
+        box-shadow: -8px 0 28px rgba(0,0,0,0.55);
+      }
+    }
   </style>
 </head>
 <body>
@@ -283,6 +418,8 @@
     <option value="">Chargement…</option>
   </select>
   <nav>
+    <button id="btnVoice" onclick="toggleSpeechMode(this)" title="Reconnaissance et voix : appareil (téléphone) ou serveur"></button>
+    <button id="btnVoiceCfg" onclick="toggleVoiceCfg()" title="Choisir les voix de l'appareil">⚙</button>
     <button id="btnVocab" onclick="openPanel('vocabulary', this)">Vocabulaire</button>
     <button id="btnProfile" onclick="openPanel('profile', this)">Profil</button>
     <button id="btnCorrections" onclick="openPanel('corrections', this)">Corrections</button>
@@ -297,9 +434,14 @@
       <button id="talkBtn" title="Maintenir pour parler">🎙</button>
       <button id="resetBtn" onclick="resetSession()">Nouvelle session</button>
     </div>
+    <div id="start-gate">
+      <button id="startBtn" onclick="primeStart()">▶&nbsp; Commencer la conversation</button>
+      <div id="start-hint">Autorisez le micro quand votre navigateur le demande.</div>
+    </div>
   </div>
   <div id="side-panel">
     <div id="side-title"></div>
+    <button id="side-close" onclick="closePanel()" title="Fermer" aria-label="Fermer">✕</button>
     <div id="side-content"></div>
   </div>
 </div>
@@ -307,6 +449,17 @@
 <div id="word-popup">
   <div id="popup-word"></div>
   <button id="popup-btn" onclick="addWordToVocab()">+ Vocabulaire</button>
+</div>
+
+<div id="voice-cfg">
+  <div class="vc-title">Voix de l'appareil</div>
+  <label>Personnage féminin
+    <select id="voiceFemale" onchange="saveVoiceChoice('f', this.value)"></select>
+  </label>
+  <label>Personnage masculin
+    <select id="voiceMale" onchange="saveVoiceChoice('m', this.value)"></select>
+  </label>
+  <button id="vc-test" onclick="testVoices()">▶ Tester les deux voix</button>
 </div>
 
 <script>
@@ -327,6 +480,32 @@
   let currentPanel     = null;
   let currentPersonaName = 'Marion Cotillard';
 
+  // ── Speech mode ────────────────────────────────────────────────────────────
+  //   'device' : phone STT (Web Speech) + phone TTS      → /greeting_text, /turn_text
+  //   'hybrid' : server STT (Whisper)   + phone TTS      → /greeting_text, /turn_stt
+  //   'server' : server STT             + server TTS      → /greeting, /turn
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const canDeviceSTT = !!SR;
+  const canDeviceTTS = !!window.speechSynthesis;
+  const hasDeviceSpeech = canDeviceSTT && canDeviceTTS;
+  // iOS SpeechRecognition is unreliable → default those devices to hybrid.
+  const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
+  let speechMode = (hasDeviceSpeech && !isIOS) ? 'device' : (canDeviceTTS ? 'hybrid' : 'server');
+  let recognition = null;
+  let started = false;                      // becomes true after the user taps "Commencer"
+  let personaGenre = {};                    // persona id -> 'm' | 'f'
+  let currentPersonaGenre = 'f';
+  let frenchVoices = [];
+  if (window.speechSynthesis) {
+    const loadVoices = () => {
+      frenchVoices = speechSynthesis.getVoices().filter(v => (v.lang||'').toLowerCase().startsWith('fr'));
+      populateVoiceCfg();
+    };
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
   // ── Persona ──────────────────────────────────────────────────────────────
   async function loadPersonas() {
     try {
@@ -334,10 +513,11 @@
       const data = await res.json();
       personaSelect.innerHTML = '';
       data.personas.forEach(p => {
+        personaGenre[p.id] = p.genre || 'f';
         const opt = document.createElement('option');
         opt.value       = p.id;
         opt.textContent = p.name;
-        if (p.id === 'marion_cotillard') opt.selected = true;
+        if (p.id === 'marion_cotillard') { opt.selected = true; currentPersonaGenre = p.genre || 'f'; }
         personaSelect.appendChild(opt);
       });
     } catch {
@@ -370,7 +550,7 @@
       body:    JSON.stringify({ id }),
     });
     transcript.innerHTML = '';
-    await startConversation();
+    if (started) await startConversation();
   }
 
   async function setPersona(id) {
@@ -383,8 +563,9 @@
     const data = await res.json();
     if (data.ok) {
       currentPersonaName = data.name;
+      currentPersonaGenre = data.genre || personaGenre[id] || 'f';
       transcript.innerHTML = '';
-      await startConversation();
+      if (started) await startConversation();
     }
   }
 
@@ -431,13 +612,17 @@
   }
 
   // ── Side panel ───────────────────────────────────────────────────────────
+  function closePanel() {
+    sidePanel.classList.remove('open');
+    document.querySelectorAll('header nav button').forEach(b => b.classList.remove('active'));
+    currentPanel = null;
+  }
+
   async function openPanel(type, triggerBtn) {
     const navBtns = document.querySelectorAll('header nav button');
 
     if (currentPanel === type) {
-      sidePanel.classList.remove('open');
-      navBtns.forEach(b => b.classList.remove('active'));
-      currentPanel = null;
+      closePanel();
       return;
     }
 
@@ -533,7 +718,14 @@
     form.append('audio', blob, 'audio' + ext);
 
     try {
-      const res  = await fetch('/turn', { method: 'POST', body: form });
+      // hybrid → /turn_stt (server STT, text back, phone speaks); server → /turn (audio back)
+      const endpoint = speechMode === 'hybrid' ? '/turn_stt' : '/turn';
+      const res  = await fetch(endpoint, { method: 'POST', body: form });
+      if (!res.ok) {
+        setStatus('Erreur serveur (HTTP ' + res.status + ') — réessayez', '');
+        console.error(endpoint, 'failed', res.status, await res.text());
+        return;
+      }
       const data = await res.json();
 
       if (data.error === 'no_speech') {
@@ -545,14 +737,15 @@
         addNewWords(data.new_words);
 
         setStatus('🔊 ' + currentPersonaName + ' parle…', 'speaking');
-        await playWav(data.audio_b64);
+        if (speechMode === 'hybrid') await speakDevice(data.bot_reply);
+        else if (data.audio_b64) await playWav(data.audio_b64);
         setStatus('Appuyer pour parler', '');
 
         if (currentPanel) openPanel(currentPanel,
           document.getElementById('btn' + currentPanel.charAt(0).toUpperCase() + currentPanel.slice(1)));
       }
     } catch (err) {
-      setStatus('Erreur réseau', '');
+      setStatus('Erreur réseau — le serveur est-il démarré ?', '');
       console.error(err);
     } finally {
       btn.classList.remove('processing');
@@ -562,14 +755,29 @@
   }
 
   // ── Audio playback ───────────────────────────────────────────────────────
+  // One reusable <audio> element: iOS only allows programmatic play() once it has
+  // been "unlocked" by a gesture-initiated play (done in primeStart), and that
+  // unlock sticks to this specific element.
+  let _player = null;
+  function _getPlayer() {
+    if (!_player) { _player = new Audio(); _player.setAttribute('playsinline', ''); }
+    return _player;
+  }
+  function _silentWavUrl() {
+    const b = new Uint8Array([0x52,0x49,0x46,0x46,0x25,0,0,0,0x57,0x41,0x56,0x45,
+      0x66,0x6d,0x74,0x20,0x10,0,0,0,1,0,1,0,0x40,0x1f,0,0,0x40,0x1f,0,0,1,0,8,0,
+      0x64,0x61,0x74,0x61,1,0,0,0,0x80]);
+    return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+  }
   function playWav(b64) {
     return new Promise(resolve => {
       const bin   = atob(b64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const url   = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
-      const audio = new Audio(url);
+      const audio = _getPlayer();
       audio.onended = audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      audio.src = url;
       audio.play().catch(resolve);
     });
   }
@@ -577,7 +785,61 @@
   // ── Session reset ────────────────────────────────────────────────────────
   async function resetSession() {
     transcript.innerHTML = '';
+    if (started) await startConversation();
+  }
+
+  // ── Start gate — unlock audio + mic, then open the conversation ─────────────
+  async function primeStart() {
+    started = true;
+    document.getElementById('start-gate').classList.add('hidden');
+    // Unlock device TTS inside this user gesture (iOS blocks speech otherwise).
+    if (window.speechSynthesis) {
+      try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch {}
+    }
+    // Unlock the <audio> element too, so server-mode replies (☁) play on iOS.
+    try {
+      const a = _getPlayer();
+      a.src = _silentWavUrl();
+      a.play().catch(() => {});
+    } catch {}
+    // Request microphone permission now, within the gesture (iOS-friendly).
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach(t => t.stop());
+    } catch { /* denied or unavailable — the talk button will re-request */ }
+    // Sync the server to the visible persona/level. The server remembers its last
+    // persona across page reloads, so without this the greeting can come from the
+    // wrong persona — with the wrong voice gender. (Wait for the dropdowns first,
+    // in case the user tapped Start before they finished loading.)
+    try { await _listsReady; } catch {}
+    await syncSelection();
     await startConversation();
+  }
+
+  async function syncSelection() {
+    try {
+      const pid = personaSelect.value;
+      if (pid) {
+        const res = await fetch('/set_persona', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: pid }),
+        });
+        const d = await res.json();
+        if (d.ok) {
+          currentPersonaName  = d.name;
+          currentPersonaGenre = d.genre || personaGenre[pid] || 'f';
+        }
+      }
+      const lid = levelSelect.value;
+      if (lid) {
+        await fetch('/set_level', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: lid }),
+        });
+      }
+    } catch (e) { console.error('selection sync failed', e); }
   }
 
   // ── Bot opens the conversation ─────────────────────────────────────────────
@@ -586,7 +848,8 @@
     btn.disabled = true;
     isProcessing = true;
     try {
-      const res  = await fetch('/greeting', { method: 'POST' });
+      const endpoint = speechMode === 'server' ? '/greeting' : '/greeting_text';
+      const res  = await fetch(endpoint, { method: 'POST' });
       if (!res.ok) {
         setStatus('Greeting indisponible — redémarrez le serveur (HTTP ' + res.status + ')', '');
         console.error('greeting failed', res.status, await res.text());
@@ -597,7 +860,8 @@
         addMsg('bot', data.bot_reply);
         addNewWords(data.new_words);
         setStatus('🔊 ' + currentPersonaName + ' parle…', 'speaking');
-        if (data.audio_b64) await playWav(data.audio_b64);
+        if (speechMode === 'server') { if (data.audio_b64) await playWav(data.audio_b64); }
+        else await speakDevice(data.bot_reply);
       }
       setStatus('Appuyer pour parler', '');
     } catch (err) {
@@ -608,6 +872,221 @@
       isProcessing = false;
     }
   }
+
+  // ── Speech-mode toggle (device / hybrid / server) ──────────────────────────
+  function availableModes() {
+    const m = [];
+    if (canDeviceSTT && canDeviceTTS) m.push('device');
+    if (canDeviceTTS) m.push('hybrid');
+    m.push('server');
+    return m;
+  }
+  const VOICE_LABELS = { device: '📱 Voix', hybrid: '🎙️ Mixte', server: '☁️ Voix' };
+  const VOICE_TITLES = {
+    device: 'Reconnaissance et voix sur l’appareil (téléphone)',
+    hybrid: 'Reconnaissance sur le serveur (Whisper), voix sur l’appareil',
+    server: 'Reconnaissance et voix sur le serveur',
+  };
+  function updateVoiceButton() {
+    const b = document.getElementById('btnVoice');
+    if (availableModes().length <= 1) { b.style.display = 'none'; return; }
+    b.textContent = VOICE_LABELS[speechMode];
+    b.title = VOICE_TITLES[speechMode];
+    b.classList.add('active');
+  }
+
+  function toggleSpeechMode() {
+    if (isProcessing) return;   // don't switch mid-turn
+    // Abort any in-progress capture from the previous mode.
+    if (recognition) { try { recognition.abort ? recognition.abort() : recognition.stop(); } catch {} recognition = null; }
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      try { mediaRecorder.onstop = null; mediaRecorder.stop(); } catch {}
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    }
+    btn.classList.remove('recording');
+    const modes = availableModes();
+    speechMode = modes[(modes.indexOf(speechMode) + 1) % modes.length];
+    updateVoiceButton();
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    setStatus('Appuyer pour parler', '');
+  }
+
+  // ── Device-voice picker (⚙): assign which device voice speaks each gender ──
+  function populateVoiceCfg() {
+    const gear = document.getElementById('btnVoiceCfg');
+    if (!canDeviceTTS) { if (gear) gear.style.display = 'none'; return; }
+    gear.style.display = '';
+    // Diagnostic: show what the browser actually detects, so a missing engine or
+    // missing French voice-pack is visible instead of a silent wrong voice.
+    const total = speechSynthesis.getVoices().length;
+    document.querySelector('#voice-cfg .vc-title').textContent =
+      frenchVoices.length
+        ? `Voix de l'appareil — ${frenchVoices.length} française(s) / ${total} au total`
+        : `Aucune voix française détectée (${total} voix au total) — installez les données ` +
+          `françaises du moteur TTS, puis fermez et rouvrez le navigateur`;
+    if (!frenchVoices.length) return;
+    for (const [selId, key] of [['voiceFemale','ouichat_voice_f'], ['voiceMale','ouichat_voice_m']]) {
+      const sel = document.getElementById(selId);
+      const cur = localStorage.getItem(key) || '';
+      sel.innerHTML = '<option value="">(auto)</option>';
+      frenchVoices.forEach((v, i) => {
+        const o = document.createElement('option');
+        // Key on voiceURI: several voices can share one display name (e.g. Chrome's
+        // local + network "Google français"), and name-keying would collide.
+        o.value = v.voiceURI || v.name;
+        // Keep full names — they reveal which engine (Google/Samsung/…) a voice is
+        // from — and disambiguate duplicates via the URI (local/réseau).
+        let tag = '';
+        if (frenchVoices.some((x, j) => j !== i && x.name === v.name)) {
+          const uri = (v.voiceURI || '').toLowerCase();
+          tag = uri.includes('network') ? ' (réseau)' :
+                uri.includes('local')   ? ' (local)'  : ' (' + (i + 1) + ')';
+        }
+        o.textContent = v.name + tag + ' — ' + v.lang;
+        if (o.value === cur) o.selected = true;
+        sel.appendChild(o);
+      });
+    }
+  }
+
+  function saveVoiceChoice(genre, name) {
+    const key = genre === 'm' ? 'ouichat_voice_m' : 'ouichat_voice_f';
+    if (name) localStorage.setItem(key, name); else localStorage.removeItem(key);
+  }
+
+  function toggleVoiceCfg() {
+    document.getElementById('voice-cfg').classList.toggle('visible');
+  }
+
+  async function testVoices() {
+    const g = currentPersonaGenre;
+    currentPersonaGenre = 'f';
+    await speakDevice('Bonjour, je suis la voix féminine.');
+    currentPersonaGenre = 'm';
+    await speakDevice('Et moi, je suis la voix masculine.');
+    currentPersonaGenre = g;
+  }
+
+  function voiceFor(genre) {
+    if (!frenchVoices.length) return null;
+    // 1) A voice the user assigned manually (⚙ menu) always wins. Stored ids are
+    //    voiceURIs (unique) with a name fallback for older saved choices.
+    const stored = localStorage.getItem(genre === 'm' ? 'ouichat_voice_m' : 'ouichat_voice_f');
+    if (stored) {
+      const v = frenchVoices.find(v => (v.voiceURI || v.name) === stored) ||
+                frenchVoices.find(v => v.name === stored);
+      if (v) return v;
+    }
+    // 2) Best-effort gender match on name + voiceURI. Samsung TTS encodes gender
+    //    explicitly (…SMTf00 = female, …SMTm00 = male); Apple/desktop voices carry
+    //    human names; some Google voices carry #male/#female markers.
+    const maleHints   = /(smtm|thomas|paul|nicolas|\bmale\b|#male|homme|daniel|yannick|guillaume|henri)/i;
+    const femaleHints = /(smtf|am[eé]lie|aur[eé]lie|marie|c[eé]line|female|femme|audrey|virginie|denise|eloise)/i;
+    const idOf   = v => v.name + ' ' + (v.voiceURI || '');
+    const hinted = frenchVoices.find(v => (genre === 'm' ? maleHints : femaleHints).test(idOf(v)));
+    if (hinted) return hinted;
+    // 3) Opaque names (Android "Google français", fr-fr-x-frb, …): at least use
+    //    DIFFERENT voices per gender when the device has more than one.
+    return frenchVoices[genre === 'm' ? Math.min(1, frenchVoices.length - 1) : 0];
+  }
+
+  function speakDevice(text) {
+    return new Promise(resolve => {
+      if (!window.speechSynthesis) return resolve();
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR';
+      const v = voiceFor(currentPersonaGenre);
+      if (v) u.voice = v;
+      u.onend = u.onerror = () => resolve();
+      speechSynthesis.speak(u);
+    });
+  }
+
+  function startDeviceListening() {
+    if (isProcessing) return;
+    try {
+      recognition = new SR();
+      recognition.lang = 'fr-FR';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      let got = false, erred = false;
+      recognition.onresult = (e) => { got = true; sendText(e.results[0][0].transcript.trim()); };
+      recognition.onerror  = (e) => {
+        btn.classList.remove('recording');
+        erred = true;
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          // iOS Safari throws service-not-allowed when its recognition is blocked.
+          // Fall back to HYBRID: server STT (Whisper) but keep the phone's voice.
+          speechMode = canDeviceTTS ? 'hybrid' : 'server';
+          updateVoiceButton();
+          setStatus('Reconnaissance de l’appareil indisponible — micro serveur activé (voix de l’appareil conservée)', '');
+        } else if (e.error === 'no-speech') {
+          setStatus('Rien entendu — réessayez', '');
+        } else {
+          setStatus('Erreur micro : ' + e.error, '');
+        }
+      };
+      recognition.onend    = () => { btn.classList.remove('recording'); if (!got && !erred && !isProcessing) setStatus('Appuyer pour parler', ''); };
+      recognition.start();
+      btn.classList.add('recording');
+      setStatus('🎤 En écoute…', 'listening');
+    } catch (err) {
+      setStatus('Reconnaissance vocale indisponible', '');
+      console.error(err);
+    }
+  }
+
+  function stopDeviceListening() {
+    if (recognition) { try { recognition.stop(); } catch {} }
+    btn.classList.remove('recording');
+  }
+
+  async function sendText(userText) {
+    if (!userText) { setStatus('Rien entendu — réessayez', ''); return; }
+    btn.classList.remove('recording');
+    btn.classList.add('processing');
+    btn.disabled = true;
+    isProcessing = true;
+    setStatus('⏳ Traitement…', 'processing');
+    try {
+      const res  = await fetch('/turn_text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: userText }),
+      });
+      if (!res.ok) {
+        setStatus('Erreur serveur (HTTP ' + res.status + ') — réessayez', '');
+        console.error('/turn_text failed', res.status, await res.text());
+        return;
+      }
+      const data = await res.json();
+      if (data.error) {
+        setStatus('Erreur — réessayez', '');
+      } else {
+        addMsg('vous', data.user_text);
+        addMsg('bot',  data.bot_reply);
+        if (data.correction) addCorrection(data.correction);
+        addNewWords(data.new_words);
+        setStatus('🔊 ' + currentPersonaName + ' parle…', 'speaking');
+        await speakDevice(data.bot_reply);
+        setStatus('Appuyer pour parler', '');
+        if (currentPanel) openPanel(currentPanel,
+          document.getElementById('btn' + currentPanel.charAt(0).toUpperCase() + currentPanel.slice(1)));
+      }
+    } catch (err) {
+      setStatus('Erreur réseau — le serveur est-il démarré ?', '');
+      console.error(err);
+    } finally {
+      btn.classList.remove('processing');
+      btn.disabled = false;
+      isProcessing = false;
+    }
+  }
+
+  // ── Talk button — routes to device speech or the server audio pipeline ──────
+  function onPressStart(e) { e.preventDefault(); speechMode === 'device' ? startDeviceListening() : startRecording(); }
+  function onPressEnd(e)   { if (e) e.preventDefault(); speechMode === 'device' ? stopDeviceListening() : stopRecording(); }
 
   // ── Word popup ───────────────────────────────────────────────────────────
   const popup     = document.getElementById('word-popup');
@@ -657,22 +1136,20 @@
   popup.addEventListener('mouseenter', () => clearTimeout(hideTimer));
   popup.addEventListener('mouseleave', hidePopup);
 
-  // Load dropdowns and request mic permission on page load
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(s => s.getTracks().forEach(t => t.stop()))
-    .catch(() => setStatus('Accès au micro refusé'));
+  // Set up the voice-mode button and load the dropdowns. The conversation itself
+  // starts only when the user taps "Commencer" (primeStart) — that single gesture
+  // unlocks audio + grants mic on iOS, which auto-play/auto-mic on load cannot.
+  updateVoiceButton();
+  const _listsReady = Promise.all([loadPersonas(), loadLevels()]);
 
-  // Load dropdowns, then let the bot open the conversation
-  Promise.all([loadPersonas(), loadLevels()]).then(startConversation);
-
-  // ── Button events ────────────────────────────────────────────────────────
-  btn.addEventListener('mousedown',  e => { e.preventDefault(); startRecording(); });
-  btn.addEventListener('mouseup',    stopRecording);
+  // ── Button events (routed to device speech or the server audio pipeline) ────
+  btn.addEventListener('mousedown',  onPressStart);
+  btn.addEventListener('mouseup',    onPressEnd);
   btn.addEventListener('mouseleave', () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+    if (speechMode !== 'device' && mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
   });
-  btn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); });
-  btn.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); });
+  btn.addEventListener('touchstart', onPressStart);
+  btn.addEventListener('touchend',   onPressEnd);
 </script>
 </body>
 </html>

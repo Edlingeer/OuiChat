@@ -32,7 +32,8 @@ def list_personas() -> list[dict]:
         if fname.endswith(".json"):
             with open(os.path.join(_PERSONAS_DIR, fname), encoding="utf-8") as f:
                 data = json.load(f)
-            result.append({"id": data["id"], "name": data["name"]})
+            result.append({"id": data["id"], "name": data["name"],
+                           "genre": data.get("genre", "f")})
     return result
 
 

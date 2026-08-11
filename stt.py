@@ -1,16 +1,18 @@
 """Speech-to-text wrapper around faster-whisper (default) or ElevenLabs Scribe
-(optional, via STT_BACKEND=elevenlabs)."""
+(optional, via STT_BACKEND=elevenlabs).
+
+faster-whisper is imported lazily (only when the local backend actually runs), so an
+all-cloud setup (STT_BACKEND=elevenlabs) doesn't need it installed."""
 
 import io
 import wave
 
 import numpy as np
-from faster_whisper import WhisperModel
 
 import elevenlabs_api
 
 
-_model: WhisperModel | None = None
+_model = None   # faster_whisper.WhisperModel, created lazily on first local transcription
 
 
 def _elevenlabs_stt(audio_bytes: bytes, filename: str = "audio.wav") -> str:
@@ -35,9 +37,10 @@ def _pcm16_wav_bytes(audio: np.ndarray, sample_rate: int) -> bytes:
     return buf.getvalue()
 
 
-def _load_model(model_size: str, device: str) -> WhisperModel:
+def _load_model(model_size: str, device: str):
     global _model
     if _model is None:
+        from faster_whisper import WhisperModel   # lazy: heavy dep, local backend only
         compute_type = "float16" if device == "cuda" else "int8"
         _model = WhisperModel(model_size, device=device, compute_type=compute_type)
     return _model

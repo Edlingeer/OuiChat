@@ -72,13 +72,44 @@ Press **Ctrl+C** to exit.
 uvicorn api:app --port 8000
 ```
 
-Then open `http://localhost:8000` in your browser. The bot opens the conversation with a
-greeting, then hold the microphone button to speak and release to send. The top-right
-buttons open live panels for vocabulary, learner profile, and correction history.
+Then open `http://localhost:8000` in your browser. Tap **▶ Commencer la conversation**
+(one tap unlocks audio + microphone — required on iOS) and the bot opens with a greeting.
+Hold the microphone button to speak, release to send. The top-right buttons open live
+panels for vocabulary, learner profile, and correction history.
 
 > **First reply is slow.** The first LLM call of a session loads the model into VRAM
 > (~30–60s for `qwen3.6:27b`); every turn after is fast. On the web app this happens during
-> the opening greeting, so the model is already warm by the time you speak.
+> the opening greeting, so the model is already warm by the time you speak. (Cloud LLMs
+> skip this entirely.)
+
+### Speech modes (button in the app header)
+
+The web app has three speech modes, cycled by the voice button in the header:
+
+| Mode | STT (your speech) | TTS (bot voice) | Notes |
+|---|---|---|---|
+| **📱 Voix** | phone/browser (Web Speech) | phone/browser | No audio crosses the wire — only text. Default on Android/desktop Chrome. Phone STT may auto-correct your mistakes, hiding them from the tutor. |
+| **🎙️ Mixte** | **server Whisper** | phone/browser | Best of both: faithful transcription (catches your errors) + free device voice. **Default on iPhone/iPad** (iOS speech recognition is unreliable). |
+| **☁️ Voix** | server (`STT_BACKEND`) | server (`TTS_BACKEND`) | Full server pipeline — uses whatever backends the launcher sets (Whisper/Piper local, or ElevenLabs). |
+
+The button only shows the modes your browser supports. If device speech recognition
+fails (e.g. iOS `service-not-allowed`), the app automatically drops to **🎙️ Mixte**.
+
+**Device voices (⚙ button):** the Web Speech API doesn't expose voice gender, and phone
+voices often have opaque names ("Google français"), so automatic male/female matching is
+best-effort. Use the ⚙ menu to assign which of your device's French voices speaks the
+female and male personas (saved on the device); "Tester les deux voix" previews them.
+Note: some engines expose only ONE French voice to browsers — the variant selected in the
+system's TTS settings (Samsung TTS, and Google TTS's voice I–IV picker). To change the
+voice in that case, pick a different variant in the phone's text-to-speech settings and
+fully restart the browser.
+
+### Phone access (Tailscale)
+
+Run **`run_server.bat`** — it starts only the backend (no browser window) and exposes it
+over Tailscale HTTPS. On the phone: Tailscale ON, then open the `https://….ts.net` URL the
+script prints. HTTPS is mandatory — phone browsers block the microphone and speech APIs
+on plain `http://`. Keep the server window open; closing it stops the server.
 
 ---
 
@@ -197,6 +228,27 @@ uvicorn api:app --port 8000
 The default voice ids are generic multilingual voices; for the best French, replace them
 with native-French voice ids from your ElevenLabs library via `ELEVENLABS_VOICE_MALE` /
 `ELEVENLABS_VOICE_FEMALE`. Male/female selection still follows each persona's `genre`.
+
+If ElevenLabs TTS fails mid-session (out of credits, network error, …), synthesis
+automatically **falls back to local Piper** so the conversation never breaks — provided
+Piper is installed (see lite mode below).
+
+### Lightweight / all-cloud mode
+
+`faster-whisper`, `piper`, and `sounddevice` are imported **lazily** — they load only when
+a *local* backend is selected. So if you run everything in the cloud
+(`STT_BACKEND=elevenlabs`, `TTS_BACKEND=elevenlabs`, and `LLM_BACKEND=nvidia` or an Ollama
+`-cloud` model), none of the heavy libraries or the GPU are needed. Install just the thin
+deps and run the web interface on any machine:
+
+```bash
+pip install -r requirements-lite.txt
+uvicorn api:app --port 8000
+```
+
+Access the UI from any browser, including a phone (the server runs elsewhere; the phone is
+just the client). Note: the automatic Piper TTS fallback only works if Piper is installed,
+so a pure lite install trades that safety net for a smaller footprint.
 
 ---
 

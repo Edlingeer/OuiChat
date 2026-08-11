@@ -1,0 +1,21 @@
+# Minimal dependencies for an ALL-CLOUD thin client (web interface only).
+# Use when every heavy component runs in the cloud:
+#     LLM_BACKEND=ollama  (with a "-cloud" model tag)   or   LLM_BACKEND=nvidia
+#     STT_BACKEND=elevenlabs
+#     TTS_BACKEND=elevenlabs
+#
+# No torch / faster-whisper / piper / sounddevice / GPU required — thanks to lazy
+# imports, those load only if a LOCAL backend is selected. Runs on a modest laptop,
+# small VPS, or Raspberry Pi; access the web UI from any browser (incl. mobile).
+#
+# Note: LLM_BACKEND=ollama with a "-cloud" tag still needs the Ollama daemon running
+# locally as a proxy (after `ollama signin`). For a daemon-free thin client, use
+# LLM_BACKEND=nvidia (pure HTTP) — then you can drop the `ollama` line below.
+
+fastapi>=0.110
+uvicorn>=0.27
+python-multipart>=0.0.9   # audio uploads to /turn
+httpx>=0.27               # ElevenLabs STT/TTS
+numpy>=1.24               # audio (de)serialisation
+ollama>=0.2               # LLM_BACKEND=ollama (local daemon / cloud proxy)
+openai>=1.0               # LLM_BACKEND=nvidia (hosted API)
