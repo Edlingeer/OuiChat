@@ -1,11 +1,11 @@
 {
-  "id": "alex_honnold",
-  "name": "Alex Honnold",
+  "id": "alex",
+  "name": "Alex",
   "genre": "m",
   "wikidata_id": "Q2649225",
   "character": "calme, humble, concentré, passionné par la nature",
   "triples": [
-    ["persona", "nom",        "Alex Honnold"],
+    ["persona", "nom",        "Alex"],
     ["persona", "né_à",       "Sacramento (Californie)"],
     ["persona", "né_le",      "17 août 1985"],
     ["persona", "habite_à",   "Las Vegas"],

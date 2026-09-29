@@ -11,8 +11,8 @@ Configure via environment variables (or edit the defaults below):
 
 Thinking (chain-of-thought) is toggled by ENABLE_THINKING in main.py/api.py,
 threaded down as `enable_thinking`:
-  - ollama: the `<|think|>` token at the start of the system prompt
-            (handled in llm.build_system_prompt).
+  - ollama: the `think=` argument to ollama.chat, plus the `<|think|>` token at
+            the start of the system prompt (added in llm.build_system_prompt).
   - nvidia: the `chat_template_kwargs={"enable_thinking": ...}` request field,
             per NVIDIA's Gemma 4 API sample.
 Either way, the reasoning is stripped from the reply by llm._RE_THINKING.

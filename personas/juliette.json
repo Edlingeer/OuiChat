@@ -1,10 +1,10 @@
 {
-  "id": "juliette_binoche",
-  "name": "Juliette Binoche",
+  "id": "juliette",
+  "name": "Juliette",
   "wikidata_id": "Q107650",
   "character": "intellectuelle, artistique, ouverte d'esprit, engagée",
   "triples": [
-    ["persona", "nom",        "Juliette Binoche"],
+    ["persona", "nom",        "Juliette"],
     ["persona", "née_à",      "Paris"],
     ["persona", "née_le",     "9 mars 1964"],
     ["persona", "habite_à",   "Paris"],

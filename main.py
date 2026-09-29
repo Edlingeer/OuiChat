@@ -1,4 +1,4 @@
-"""French A1 language learning bot — entry point."""
+"""French conversation bot (A1–B1) — terminal entry point."""
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 # LLM backend & model are configured in providers.py (or via env vars:
@@ -17,7 +17,7 @@ CORRECTIONS_FILE   = "corrections.md"
 PROFILE_FILE       = "profile.json"
 NEW_WORDS_PER_TURN = 1
 ENABLE_THINKING    = False          # True → <|think|> chain-of-thought (slower)
-DEFAULT_PERSONA    = "marion_cotillard"  # id from personas/ folder
+DEFAULT_PERSONA    = "marion"  # id from personas/ folder
 DEFAULT_LEVEL      = "a1"               # a1 | a2 | b1
 AUDIO_DEVICE        = None  # mic input  — set to index from check_audio.py if needed
 AUDIO_OUTPUT_DEVICE = 2 # speaker out — set to index from check_audio.py if needed

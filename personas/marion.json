@@ -1,10 +1,10 @@
 {
-  "id": "marion_cotillard",
-  "name": "Marion Cotillard",
+  "id": "marion",
+  "name": "Marion",
   "wikidata_id": "Q235118",
   "character": "chaleureuse, engagée, artistique, un peu intense",
   "triples": [
-    ["persona", "nom",        "Marion Cotillard"],
+    ["persona", "nom",        "Marion"],
     ["persona", "née_à",      "Paris"],
     ["persona", "née_le",     "30 septembre 1975"],
     ["persona", "habite_à",   "Paris"],

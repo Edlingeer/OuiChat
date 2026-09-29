@@ -35,7 +35,7 @@ CORRECTIONS_FILE   = "corrections.md"
 PROFILE_FILE       = "profile.json"
 NEW_WORDS_PER_TURN = 1
 ENABLE_THINKING    = False
-DEFAULT_PERSONA    = "marion_cotillard"
+DEFAULT_PERSONA    = "marion"
 DEFAULT_LEVEL      = "a1"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))

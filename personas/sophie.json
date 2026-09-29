@@ -1,10 +1,10 @@
 {
-  "id": "sophie_marceau",
-  "name": "Sophie Marceau",
+  "id": "sophie",
+  "name": "Sophie",
   "wikidata_id": "Q235435",
   "character": "directe, drôle, indépendante, un peu rebelle",
   "triples": [
-    ["persona", "nom",        "Sophie Marceau"],
+    ["persona", "nom",        "Sophie"],
     ["persona", "née_à",      "Paris"],
     ["persona", "née_le",     "17 novembre 1966"],
     ["persona", "habite_à",   "Paris"],

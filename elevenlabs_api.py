@@ -9,7 +9,7 @@ each independently via environment variables; both default OFF (local models).
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║  PUT YOUR API KEY IN THE  ELEVENLABS_API_KEY  ENVIRONMENT VARIABLE.        ║
 ║  Windows (persists):   setx ELEVENLABS_API_KEY "sk_your_key_here"          ║
-║  then reopen the terminal. (Or set it in launch.bat — see that file.)      ║
+║  then reopen the terminal. Enable the backends in launch.bat.              ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
 Optional overrides (all have sensible defaults):
@@ -19,8 +19,8 @@ Optional overrides (all have sensible defaults):
     ELEVENLABS_VOICE_MALE      voice id used for male personas
     ELEVENLABS_STT_LANG        ISO-639 code (default "" = auto-detect)
 
-Uses httpx (already installed as an openai dependency); imported lazily so
-local-only setups need nothing from this file.
+Uses httpx (listed in requirements); imported lazily so local-only setups need
+nothing from this file.
 """
 
 import io

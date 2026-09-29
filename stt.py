@@ -80,7 +80,7 @@ def transcribe(
 
 def transcribe_file(path: str, model_size: str, device: str) -> str:
     """Transcribe from a file path — used by the web API.
-    faster-whisper calls ffmpeg internally to decode WebM/MP4/etc."""
+    faster-whisper decodes WebM/MP4/etc. via PyAV (bundled FFmpeg libraries)."""
     if elevenlabs_api.use_stt():
         import os
         with open(path, "rb") as f:

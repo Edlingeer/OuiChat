@@ -478,7 +478,7 @@
   let stream           = null;
   let isProcessing     = false;
   let currentPanel     = null;
-  let currentPersonaName = 'Marion Cotillard';
+  let currentPersonaName = 'Marion';
 
   // ── Speech mode ────────────────────────────────────────────────────────────
   //   'device' : phone STT (Web Speech) + phone TTS      → /greeting_text, /turn_text
@@ -517,7 +517,7 @@
         const opt = document.createElement('option');
         opt.value       = p.id;
         opt.textContent = p.name;
-        if (p.id === 'marion_cotillard') { opt.selected = true; currentPersonaGenre = p.genre || 'f'; }
+        if (p.id === 'marion') { opt.selected = true; currentPersonaGenre = p.genre || 'f'; }
         personaSelect.appendChild(opt);
       });
     } catch {

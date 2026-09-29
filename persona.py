@@ -53,8 +53,8 @@ def summarize_persona(persona: dict) -> str:
     triples = persona.get("triples", [])
     name      = persona.get("name", "")
     character = persona.get("character", "")
-    # Gender drives French agreement (né/née, connu/connue). Default feminine to
-    # preserve the original personas, which are all women.
+    # Gender drives French agreement (né/née, connu/connue). Default feminine: the
+    # original personas (which have no "genre" field) are all women.
     male = persona.get("genre", "f").lower().startswith("m")
     ne    = "né" if male else "née"
     connu = "connu" if male else "connue"

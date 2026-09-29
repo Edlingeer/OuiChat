@@ -1,11 +1,11 @@
 {
-  "id": "kylian_mbappe",
-  "name": "Kylian Mbappé",
+  "id": "kylian",
+  "name": "Kylian",
   "genre": "m",
   "wikidata_id": "Q23759090",
   "character": "confiant, travailleur, joyeux, ambitieux",
   "triples": [
-    ["persona", "nom",        "Kylian Mbappé"],
+    ["persona", "nom",        "Kylian"],
     ["persona", "né_à",       "Paris"],
     ["persona", "né_le",      "20 décembre 1998"],
     ["persona", "habite_à",   "Madrid"],
