@@ -86,9 +86,20 @@ def transcribe_file(path: str, model_size: str, device: str) -> str:
         with open(path, "rb") as f:
             return _elevenlabs_stt(f.read(), filename=os.path.basename(path))
 
+    # Decode first so an empty/corrupt upload (e.g. a very quick tap on the mic
+    # button) is treated as "no speech" instead of crashing the request.
+    from faster_whisper.audio import decode_audio   # lazy: local backend only
+    try:
+        audio = decode_audio(path, sampling_rate=16000)
+    except Exception as e:
+        print(f"  [STT] could not decode upload: {type(e).__name__}: {str(e)[:120]}", flush=True)
+        return ""
+    if audio.size == 0:
+        return ""
+
     model = _load_model(model_size, device)
     segments, _ = model.transcribe(
-        path,
+        audio,
         language="fr",
         beam_size=5,
         temperature=0,

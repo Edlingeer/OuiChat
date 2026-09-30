@@ -64,6 +64,10 @@ conda activate french_teacher
 (`conda env create -f environment.lock.yml`). Without conda, `pip install -r requirements.txt`
 installs the same packages (install a CUDA build of PyTorch yourself if you want GPU).
 
+Always run the app from the **activated** env (`conda activate french_teacher`, or via
+the `.bat` launchers). Calling the env's `python.exe` directly skips activation, and
+local Whisper then fails on the GPU with `cublas64_12.dll is not found`.
+
 The `.bat` launchers expect the env to be called `french_teacher` and Anaconda to be
 installed at `%USERPROFILE%\anaconda3` — edit the `activate.bat` path in them if yours differs.
 
@@ -402,6 +406,17 @@ Web:       ☁️  browser mic → POST /turn       → STT → LLM → TTS → 
 | `vocab.py` / `corrections.py` | Vocabulary and corrections logs |
 | `check_audio.py` | Audio device diagnostic |
 | `launch.bat` / `run_server.bat` | Windows launchers (desktop / phone via Tailscale) |
+
+---
+
+## Known limitations
+
+- **No voice activity detection in the web app.** Everything recorded while the mic
+  button is held is transcribed. Whisper can turn pure background noise into invented
+  text (e.g. "Sous-titrage ST'501"), which is then sent to the bot as if you had said it.
+  The terminal bot is not affected (it uses Silero VAD).
+- **One conversation at a time.** The web server keeps a single shared conversation,
+  persona and level in memory, so it is meant for one learner, not several at once.
 
 ---
 

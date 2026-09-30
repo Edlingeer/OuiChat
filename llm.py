@@ -68,10 +68,12 @@ def build_system_prompt(
     known_str = ", ".join(known_words) if known_words else "aucun pour l'instant"
     profile_str = summarize_for_prompt(graph)
     persona_str = summarize_persona(persona_data)
-    level_constraints = _LEVELS.get(level, _LEVELS["a1"])["constraints"]
+    level_info = _LEVELS.get(level, _LEVELS["a1"])
+    level_name = level_info["name"]
+    level_constraints = level_info["constraints"]
 
     return f"""{think_token}{persona_str}
-Tu parles avec un(e) apprenant(e) brésilien(ne) qui débute en français (niveau A1).
+Tu parles avec un(e) apprenant(e) brésilien(ne) qui apprend le français (niveau {level_name}).
 Ton rôle : pratiquer la conversation naturellement, pas enseigner.
 
 PERSONA ET STYLE :
@@ -97,7 +99,7 @@ ENTRÉE INCOMPRÉHENSIBLE :
 - Exemples incompréhensibles (→ désolé) : "j'ai parfait la mer", "bonjour table mange soleil".
 - Exemples d'erreurs à corriger (→ correction normale) : "je suis allé à plage", "j'ai mangé le pomme".
 
-NIVEAU DE LANGUE ({level}) :
+NIVEAU DE LANGUE ({level_name}) :
 {level_constraints}
 
 VOCABULAIRE PROGRESSIF :
@@ -132,6 +134,7 @@ CORRECTIONS :
 [NOUVEAUX_MOTS: motfrançais=traducao|exemple ; ...]         ← ou [NOUVEAUX_MOTS: aucun]
 [CORREÇÃO: type | explicação em português. Forme correcte : "..."]  ← seulement si erreur
 
+Pour les faits sur l'apprenant, le sujet est TOUJOURS « apprenant », jamais son prénom.
 Relations FAITS : nom, habite_à, travaille_dans, profession, aime, n_aime_pas, a_visité, veut_visiter, a_famille, parle
 Exemples :
   "Je m'appelle Thomas"  → [FAITS: apprenant|nom|Thomas]

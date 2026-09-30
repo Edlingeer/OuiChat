@@ -5,6 +5,7 @@ import os
 
 # Relation vocabulary exposed to the LLM
 RELATIONS = {
+    "nom":            "nom",
     "habite_à":       "habite à",
     "travaille_dans": "travaille dans",
     "profession":     "profession",
@@ -18,6 +19,25 @@ RELATIONS = {
 }
 
 _EMPTY = {"triples": []}
+
+LEARNER = "apprenant"
+# Subjects the LLM sometimes uses for the learner instead of "apprenant".
+_LEARNER_ALIASES = {"apprenant", "apprenante", "l'apprenant", "l'apprenante",
+                    "je", "moi", "utilisateur", "user", "learner"}
+
+
+def _learner_names(triples) -> set[str]:
+    """Lower-cased names the learner goes by: objects of apprenant|nom|X, plus
+    self-referencing X|nom|X triples (the LLM's "Paulo|nom|Paulo")."""
+    names = set()
+    for s, r, o in triples:
+        if r == "nom" and (s.lower() in _LEARNER_ALIASES or s.lower() == o.lower()):
+            names.add(o.lower())
+    return names
+
+
+def _is_learner(subject: str, names: set[str]) -> bool:
+    return subject.lower() in _LEARNER_ALIASES or subject.lower() in names
 
 
 def _load(path: str) -> dict:
@@ -40,8 +60,10 @@ def _save(path: str, graph: dict) -> None:
 def add_triples(path: str, triples: list[tuple[str, str, str]]) -> None:
     graph = _load(path)
     existing = {(s, r, o) for s, r, o in graph["triples"]}
-    for triple in triples:
-        if tuple(triple) not in existing:
+    names = _learner_names(graph["triples"] + [list(t) for t in triples])
+    for s, r, o in triples:
+        triple = (LEARNER if _is_learner(s, names) else s, r, o)
+        if triple not in existing:
             graph["triples"].append(list(triple))
             existing.add(tuple(triple))
     _save(path, graph)
@@ -57,10 +79,15 @@ def summarize_for_prompt(graph: dict) -> str:
     if not triples:
         return "  (rien encore)"
 
-    # Index: subject → {relation: [objects]}
+    # Index: subject → {relation: [objects]}. Facts filed under the learner's
+    # name (older profiles) are merged into "apprenant".
+    names = _learner_names(triples)
     idx: dict[str, dict[str, list[str]]] = {}
     for s, r, o in triples:
-        idx.setdefault(s, {}).setdefault(r, []).append(o)
+        s = LEARNER if _is_learner(s, names) else s
+        objs = idx.setdefault(s, {}).setdefault(r, [])
+        if o not in objs:
+            objs.append(o)
 
     lines: list[str] = []
 
@@ -73,7 +100,7 @@ def summarize_for_prompt(graph: dict) -> str:
             parts.append(f"{label} {', '.join(objs)}")
         return f" ({'; '.join(parts)})" if parts else ""
 
-    ap = idx.get("apprenant", {})
+    ap = idx.get(LEARNER, {})
     for rel, label in RELATIONS.items():
         if rel not in ap:
             continue
